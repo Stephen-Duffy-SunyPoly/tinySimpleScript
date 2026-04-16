@@ -68,7 +68,6 @@ vector<Register> registers;
 
 unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
     //TODO strip out comments
-
     string lineTrimmed = trim(line);
     if (lineTrimmed.empty()) {
         return nullptr;
@@ -79,9 +78,9 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
     if (parenthesisIndex != string::npos) {
         //its a function!!!!
         string functionName = lineTrimmed.substr(0,parenthesisIndex);
-        functionName = trim(lineTrimmed);
+        functionName = trim(functionName);
         //get the parameters
-        string params = lineTrimmed.substr(parenthesisIndex);
+        string params = lineTrimmed.substr(parenthesisIndex+1);
         size_t closeParenthesisIndex = params.find(')');
         if (closeParenthesisIndex == string::npos) {
             throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
