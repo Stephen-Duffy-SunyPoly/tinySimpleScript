@@ -1,6 +1,7 @@
 # tiny simple script
 A terrible scripting language for the [TeenyAT virtual architecture](https://github.com/miniat-amos/TeenyAT)
 
+If you are looking for a real programing language / compiler to use with this architecture, use this: https://github.com/Benricheson101/teeny
 
 built-in functions:  
 LCD  

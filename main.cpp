@@ -1,6 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <filesystem>
+#include <unordered_map>
+#include <functional>
 #include "common.hpp"
 #include "lcdHighLevel.hpp"
 
@@ -42,6 +45,7 @@ string lcdConsts = "; LCD Peripherals\n"
  * 2. variable assignment - all values except immediate get represented by a variable who gets an assigned memory address or stack address
  * 3. cached register assignment - all variables and required immediate are assigned to registers for usage in a style where registers are treated as a fully associated cache
 */
+//the variable assignment stage is where the names of variables existing will be resolved
 
 //each arrow here represents one of the stages above
 // hi level built in functions and constructs -> partial instructions -> unfinished assembly -> finished assembly
@@ -50,11 +54,53 @@ string lcdConsts = "; LCD Peripherals\n"
 //there will also be user defined constants in a global scope
 
 
+bool LCDSystem = true;
 
+//description of the high level block for parsing
+struct HighLevelDescription {
+    function<unique_ptr<HighLevelConstruct>(const string &line)> create;
+};
 
-
+//the built in functions
+unordered_map<string, HighLevelDescription> expansionFunctions;
 
 vector<Register> registers;
+
+unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
+    //TODO strip out comments
+
+    string lineTrimmed = trim(line);
+    if (lineTrimmed.empty()) {
+        return nullptr;
+    }
+    //determine if it is prbly a function call or not a function call.
+    //TODO make sure that this is not a function def first
+    size_t parenthesisIndex = lineTrimmed.find('(');
+    if (parenthesisIndex != string::npos) {
+        //its a function!!!!
+        string functionName = lineTrimmed.substr(0,parenthesisIndex);
+        functionName = trim(lineTrimmed);
+        //get the parameters
+        string params = lineTrimmed.substr(parenthesisIndex);
+        size_t closeParenthesisIndex = params.find(')');
+        if (closeParenthesisIndex == string::npos) {
+            throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
+        }
+        params = params.substr(0,closeParenthesisIndex);
+        params = trim(params);
+        if (expansionFunctions.contains(functionName)) {
+            return expansionFunctions[functionName].create(params);
+        } else {
+            //it might be a user defined function!
+            //do that here.
+            //for now tho:
+            throw std::runtime_error("Function " + functionName + " not found");
+        }
+    } else {
+        //another type of expression
+    }
+    return nullptr;
+}
 
 int main(const int argc, char* argv[]) {
     //creat the registers
@@ -68,6 +114,39 @@ int main(const int argc, char* argv[]) {
     //check for input file
     if (args.empty()) {
         cerr << "Usage: " << argv[0] << " <.tass file> [options]" << endl;
+        return EXIT_FAILURE;
+    }
+
+    ifstream fileIn(args[0]);
+    if (!fileIn.is_open()) {
+        cerr << "Failed to open file " << filesystem::absolute(args[0]) << endl;
+        return EXIT_FAILURE;
+    }
+
+    //load the langue constructs:
+    if (LCDSystem) {
+        expansionFunctions.insert({"update",{[](const string &line) {return make_unique<UpdateFunction>(line);}}});
+        expansionFunctions.insert({"rect",{[](const string &line) {return make_unique<RectangleFunction>(line);}}});
+        expansionFunctions.insert({"fill",{[](const string &line) {return make_unique<FillFunction>(line);}}});
+    } else {
+        //load edison system specific
+    }
+
+    vector<unique_ptr<HighLevelConstruct>> highLevelBlocks;
+
+    string line;
+    int lineNumber = 0;
+    while (getline(fileIn, line)) {
+        lineNumber++;
+        try {
+            unique_ptr<HighLevelConstruct> block = parseFileLine(line);
+            if (block != nullptr) {//enure that a blank line was not just processed
+                highLevelBlocks.push_back(std::move(block));
+            }
+        } catch (exception& e) {
+            cerr << "Error while processing line "<< lineNumber <<": "<<e.what() << endl;
+            return EXIT_FAILURE;
+        }
     }
 
 
