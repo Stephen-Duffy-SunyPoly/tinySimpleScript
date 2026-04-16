@@ -43,6 +43,7 @@ struct Register {
 class DataType {
 public:
     virtual ~DataType() =default;
+    virtual std::string toString() = 0;
 };
 
 class VariableDataType : public DataType {
@@ -52,6 +53,9 @@ class VariableDataType : public DataType {
     std::string varName;
 public:
     explicit VariableDataType(std::string varName) : varName(std::move(varName)) {}
+    std::string toString() override {
+        return "var_"+varName;
+    }
 };
 
 class ImmediateDataType : public DataType {
@@ -61,9 +65,17 @@ public:
     [[nodiscard]] int getValue() const {
         return value;
     }
+    std::string toString() override {
+        return std::to_string(value);
+    }
 };
 
-class ZeroDataType : public DataType {};
+class ZeroDataType : public DataType {
+    public:
+    std::string toString() override {
+        return "rz";
+    }
+};
 
 
 struct PartialInstruction {
@@ -74,6 +86,7 @@ class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;
     virtual std::vector<PartialInstruction> expand() = 0;
+    virtual std::string toString() = 0;
 };
 
 

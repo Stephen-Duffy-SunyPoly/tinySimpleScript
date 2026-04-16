@@ -148,6 +148,10 @@ int main(const int argc, char* argv[]) {
         }
     }
 
+    for (auto &a: highLevelBlocks) {
+        cout << a->toString() << endl;
+    }
+
 
     return EXIT_SUCCESS;
 }

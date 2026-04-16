@@ -6,6 +6,10 @@ std::vector<PartialInstruction> UpdateFunction::expand() {
     return {};
 }
 
+std::string UpdateFunction::toString() {
+    return "update";
+}
+
 //rectangle constructor
 RectangleFunction::RectangleFunction(const std::string &line) {
     //get each parameter as a string
@@ -14,19 +18,19 @@ RectangleFunction::RectangleFunction(const std::string &line) {
         throw std::runtime_error("Invalid parameters for function type retangle. Not enough parameters!");
     }
     std::string param1 = line.substr(0, nextComa);
-    std::string continueStr = line.substr(nextComa);
+    std::string continueStr = line.substr(nextComa+1);
     nextComa = continueStr.find(',', nextComa);
     if (nextComa == std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type retangle. Not enough parameters!");
     }
-    std::string param2 = continueStr.substr(nextComa);
-    continueStr = continueStr.substr(nextComa);
+    std::string param2 = continueStr.substr(0,nextComa);
+    continueStr = continueStr.substr(nextComa+1);
     nextComa = continueStr.find(',', nextComa);
     if (nextComa == std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type retangle. Not enough parameters!");
     }
-    std::string param3 = continueStr.substr(nextComa);
-    continueStr = continueStr.substr(nextComa);
+    std::string param3 = continueStr.substr(0,nextComa);
+    continueStr = continueStr.substr(nextComa+1);
     nextComa = continueStr.find(',', nextComa);
     if (nextComa != std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type rectangle. Too many parameters!");
@@ -60,11 +64,15 @@ RectangleFunction::RectangleFunction(const std::string &line) {
 
 std::vector<PartialInstruction> RectangleFunction::expand() {
     //for each param
-    //load the param if they are not 0
+    //load the param if they are not 0, actually the register cache system will handle loading and storing of variables
     //store the value into appropriate address
 
     //store 0 into the rect address
     return {};
+}
+
+std::string RectangleFunction::toString() {
+    return "rectangle ( "+xPos->toString()+", "+yPos->toString()+", "+width->toString()+", "+height->toString()+" )";
 }
 
 FillFunction::FillFunction(const std::string &line) {
@@ -84,4 +92,8 @@ FillFunction::FillFunction(const std::string &line) {
 
 std::vector<PartialInstruction> FillFunction::expand() {
     return {};
+}
+
+std::string FillFunction::toString() {
+    return "fill ("+color->toString()+")";
 }

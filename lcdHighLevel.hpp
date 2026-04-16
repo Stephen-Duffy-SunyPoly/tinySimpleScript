@@ -17,6 +17,7 @@ class UpdateFunction: public HighLevelConstruct {
         }
     }
     std::vector<PartialInstruction> expand() override;
+    std::string toString() override;
 };
 
 class RectangleFunction: public HighLevelConstruct {
@@ -30,6 +31,7 @@ class RectangleFunction: public HighLevelConstruct {
      */
     explicit RectangleFunction(const std::string& line);
     std::vector<PartialInstruction> expand() override;
+    std::string toString() override;
 };
 
 class FillFunction: public HighLevelConstruct {
@@ -37,4 +39,5 @@ class FillFunction: public HighLevelConstruct {
     public:
     explicit FillFunction([[maybe_unused]] const std::string& line);
     std::vector<PartialInstruction> expand() override;
+    std::string toString() override;
 };
