@@ -78,14 +78,26 @@ class ZeroDataType : public DataType {
 };
 
 
-struct PartialInstruction {
-    //not sure what is going here yet or if this will be a class
+class PartialInstruction {
+public:
+    virtual ~PartialInstruction() =default;
+    virtual std::string toString() = 0;
+};
+
+class DirectStorPartialInstruction : public PartialInstruction {
+    std::string storeTo;
+    std::unique_ptr<DataType> value;
+public:
+    explicit DirectStorPartialInstruction(std::string storeTo, std::unique_ptr<DataType> value) : storeTo(std::move(storeTo)), value(std::move(value)) {}
+    std::string toString() override {
+        return "store "+value->toString()+" in "+storeTo;
+    }
 };
 
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;
-    virtual std::vector<PartialInstruction> expand() = 0;
+    virtual std::vector<std::unique_ptr<PartialInstruction>> expand() = 0;
     virtual std::string toString() = 0;
 };
 

@@ -16,7 +16,7 @@ class UpdateFunction: public HighLevelConstruct {
             throw std::runtime_error("Invalid parameters for function type update");
         }
     }
-    std::vector<PartialInstruction> expand() override;
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
 
@@ -30,7 +30,7 @@ class RectangleFunction: public HighLevelConstruct {
      * @param line The data trimmed between the parentheses
      */
     explicit RectangleFunction(const std::string& line);
-    std::vector<PartialInstruction> expand() override;
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
 
@@ -38,6 +38,6 @@ class FillFunction: public HighLevelConstruct {
     std::unique_ptr<DataType> color;
     public:
     explicit FillFunction([[maybe_unused]] const std::string& line);
-    std::vector<PartialInstruction> expand() override;
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };

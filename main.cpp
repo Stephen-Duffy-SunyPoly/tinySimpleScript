@@ -135,6 +135,7 @@ int main(const int argc, char* argv[]) {
 
     string line;
     int lineNumber = 0;
+    //parse each line into the high level implmentation
     while (getline(fileIn, line)) {
         lineNumber++;
         try {
@@ -148,7 +149,17 @@ int main(const int argc, char* argv[]) {
         }
     }
 
-    for (auto &a: highLevelBlocks) {
+    vector<unique_ptr<PartialInstruction>> partialInstructions;
+    //for each high level block
+    for (auto &block : highLevelBlocks) {
+        //get the expanded content
+        vector<unique_ptr<PartialInstruction>> tmp = block->expand();
+        for (auto &instruction : tmp) {
+            partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
+        }
+    }
+
+    for (auto &a: partialInstructions) {
         cout << a->toString() << endl;
     }
 

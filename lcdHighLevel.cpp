@@ -1,9 +1,14 @@
 #include "lcdHighLevel.hpp"
 
-std::vector<PartialInstruction> UpdateFunction::expand() {
+#include <iostream>
+#include <ostream>
+
+std::vector<std::unique_ptr<PartialInstruction>> UpdateFunction::expand() {
     //produced a single instruction that stores rZ in the UPDATE address
     //str [UPDATE], rZ
-    return {};
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("UPDATE", std::make_unique<ZeroDataType>()));
+    return instructions;
 }
 
 std::string UpdateFunction::toString() {
@@ -19,19 +24,19 @@ RectangleFunction::RectangleFunction(const std::string &line) {
     }
     std::string param1 = line.substr(0, nextComa);
     std::string continueStr = line.substr(nextComa+1);
-    nextComa = continueStr.find(',', nextComa);
+    nextComa = continueStr.find(',');
     if (nextComa == std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type retangle. Not enough parameters!");
     }
     std::string param2 = continueStr.substr(0,nextComa);
     continueStr = continueStr.substr(nextComa+1);
-    nextComa = continueStr.find(',', nextComa);
+    nextComa = continueStr.find(',');
     if (nextComa == std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type retangle. Not enough parameters!");
     }
     std::string param3 = continueStr.substr(0,nextComa);
     continueStr = continueStr.substr(nextComa+1);
-    nextComa = continueStr.find(',', nextComa);
+    nextComa = continueStr.find(',');
     if (nextComa != std::string::npos) {
         throw std::runtime_error("Invalid parameters for function type rectangle. Too many parameters!");
     }
@@ -62,13 +67,19 @@ RectangleFunction::RectangleFunction(const std::string &line) {
     height = parseDataType(param4);
 }
 
-std::vector<PartialInstruction> RectangleFunction::expand() {
+std::vector<std::unique_ptr<PartialInstruction>> RectangleFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
     //for each param
     //load the param if they are not 0, actually the register cache system will handle loading and storing of variables
     //store the value into appropriate address
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("X1",std::move(xPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("Y1",std::move(yPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("X2",std::move(width)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("Y2",std::move(height)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("RECT",std::make_unique<ZeroDataType>()));
 
     //store 0 into the rect address
-    return {};
+    return instructions;
 }
 
 std::string RectangleFunction::toString() {
@@ -90,8 +101,10 @@ FillFunction::FillFunction(const std::string &line) {
     color = parseDataType(param1);
 }
 
-std::vector<PartialInstruction> FillFunction::expand() {
-    return {};
+std::vector<std::unique_ptr<PartialInstruction>> FillFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("FILL",std::move(color)));
+    return instructions;
 }
 
 std::string FillFunction::toString() {
