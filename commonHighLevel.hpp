@@ -84,3 +84,19 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class IncrementHighLevelOperation: public HighLevelConstruct {
+    std::unique_ptr<DataType> var;
+public:
+    explicit IncrementHighLevelOperation([[maybe_unused]] const std::string& name);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class DecrementHighLevelOperation: public HighLevelConstruct {
+    std::unique_ptr<DataType> var;
+public:
+    explicit DecrementHighLevelOperation([[maybe_unused]] const std::string& name);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

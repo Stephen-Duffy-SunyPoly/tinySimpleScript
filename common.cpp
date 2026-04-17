@@ -300,3 +300,25 @@ std::vector<FinishedInstruction> XorPartialInstruction::assemble(RegisterResolve
     finishedInstructions.push_back({"xor",2,op1Reg,op2Reg});
     return finishedInstructions;
 }
+
+std::unique_ptr<DataType> & IncrementPartialInstruction::getVariable(int vn) {
+    return val;
+}
+
+std::vector<FinishedInstruction> IncrementPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
+    finishedInstructions.push_back({"inc",1,op1Reg,{}});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & DecrementPartialInstruction::getVariable(int vn) {
+    return val;
+}
+
+std::vector<FinishedInstruction> DecrementPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
+    finishedInstructions.push_back({"dec",1,op1Reg,{}});
+    return finishedInstructions;
+}

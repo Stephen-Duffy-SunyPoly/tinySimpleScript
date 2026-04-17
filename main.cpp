@@ -168,6 +168,12 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
         }
         //there are at leased 2 tokens now
         //this is where ++ and -- go
+        if (tokens[1] == "++") {
+            return make_unique<IncrementHighLevelOperation>(tokens[0]);
+        } else if (tokens[1] == "--") {
+            return make_unique<DecrementHighLevelOperation>(tokens[0]);
+        }
+
         if (tokens.size() < 3) {
             throw std::runtime_error("Syntax error. Invalid statement: "+ noComments);
         }

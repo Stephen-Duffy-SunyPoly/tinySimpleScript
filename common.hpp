@@ -306,6 +306,37 @@ public:
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
 };
 
+class IncrementPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> val;
+public:
+    IncrementPartialInstruction(std::unique_ptr<DataType> val) :val(std::move(val)) {}
+
+    std::string toString() override {
+        return "increment "+val->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class DecrementPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> val;
+public:
+    DecrementPartialInstruction(std::unique_ptr<DataType> val) :val(std::move(val)) {}
+
+    std::string toString() override {
+        return "decrement "+val->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;

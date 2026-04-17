@@ -114,7 +114,7 @@ std::string ModulusHighLevelOperation::toString() {
 AndHighLevelOperation::AndHighLevelOperation(const std::string &name, const std::string &value) {
     var = parseDataType(name);
     if (!var->isVariable()) {
-        throw std::runtime_error("modulus operator left hand side must be a variable");
+        throw std::runtime_error("and operator left hand side must be a variable");
     }
     this->value = parseDataType(value);
 }
@@ -132,7 +132,7 @@ std::string AndHighLevelOperation::toString() {
 OrHighLevelOperation::OrHighLevelOperation(const std::string &name, const std::string &value) {
     var = parseDataType(name);
     if (!var->isVariable()) {
-        throw std::runtime_error("modulus operator left hand side must be a variable");
+        throw std::runtime_error("or operator left hand side must be a variable");
     }
     this->value = parseDataType(value);
 }
@@ -150,7 +150,7 @@ std::string OrHighLevelOperation::toString() {
 XorHighLevelOperation::XorHighLevelOperation(const std::string &name, const std::string &value) {
     var = parseDataType(name);
     if (!var->isVariable()) {
-        throw std::runtime_error("modulus operator left hand side must be a variable");
+        throw std::runtime_error("xor operator left hand side must be a variable");
     }
     this->value = parseDataType(value);
 }
@@ -163,4 +163,38 @@ std::vector<std::unique_ptr<PartialInstruction>> XorHighLevelOperation::expand()
 
 std::string XorHighLevelOperation::toString() {
     return var->toString() +" ^= "+value->toString();
+}
+
+IncrementHighLevelOperation::IncrementHighLevelOperation(const std::string &name) {
+    var = parseDataType(name);
+    if (!var->isVariable()) {
+        throw std::runtime_error("increment operator can only be used on a variable");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> IncrementHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<IncrementPartialInstruction>(std::move(var)));
+    return instructions;
+}
+
+std::string IncrementHighLevelOperation::toString() {
+    return var->toString() +" ++";
+}
+
+DecrementHighLevelOperation::DecrementHighLevelOperation(const std::string &name) {
+    var = parseDataType(name);
+    if (!var->isVariable()) {
+        throw std::runtime_error("increment operator can only be used on a variable");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> DecrementHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DecrementPartialInstruction>(std::move(var)));
+    return instructions;
+}
+
+std::string DecrementHighLevelOperation::toString() {
+    return var->toString() +" --";
 }
