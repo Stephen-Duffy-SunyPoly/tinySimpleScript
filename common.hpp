@@ -1,8 +1,10 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <utility>
 #include <vector>
+#include <stdexcept>
 
 const std::string WHITESPACE = " \t\n\r\f\v";
 
@@ -268,6 +270,38 @@ public:
         std::vector<FinishedInstruction> finishedInstructions;
         std::string inputReg = resolver.resolve(value,finishedInstructions,false);
         finishedInstructions.push_back({"str",2,storeTo,inputReg});
+        return finishedInstructions;
+    }
+};
+
+class VariableAssignPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    VariableAssignPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "set " + to->toString() + " to " + from->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn==0) {
+            return to;
+        }
+        return from;
+    }
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override {
+        std::vector<FinishedInstruction> finishedInstructions;
+        std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+        std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+        if (from->isVariable()) {//if it is a variable the resolve it
+            op2Reg = resolver.resolve(from,finishedInstructions,false);
+        } else {//if it is not a variable it does not need to be resolved for this
+            op2Reg = from->asAsm();
+        }
+        finishedInstructions.push_back({"set",2,op1Reg,op2Reg});
         return finishedInstructions;
     }
 };

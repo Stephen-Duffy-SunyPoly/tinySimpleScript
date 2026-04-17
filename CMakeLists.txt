@@ -6,4 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(tinySimplescript main.cpp
         common.hpp
         lcdHighLevel.cpp
-        lcdHighLevel.hpp)
+        lcdHighLevel.hpp
+        commonHighLevel.cpp
+        commonHighLevel.hpp)

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <functional>
 #include "common.hpp"
+#include "commonHighLevel.hpp"
 #include "lcdHighLevel.hpp"
 
 using namespace std;
@@ -124,7 +125,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
             //token 1 will be the name of the var
             if (tokens.size() > 1) {
                 if (charIsNumber(tokens[1][0])) {
-                    throw std::runtime_error("Varables can not start with numbers");
+                    throw std::runtime_error("Variable can not start with numbers");
                 }
                 //check if it is a allready reserved word
                 for (const string &word:reservedWords) {
@@ -144,6 +145,18 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
                 }
                 //great not lets define it
                 globalVars.push_back(tokens[1]);
+                //check if there is more to this
+                if (tokens.size() > 2) {
+                    //add an assignment instruction
+                    if (tokens[2] != "=") {
+                        throw std::runtime_error("Syntax error. Expected = or nothing but got "+tokens[2]);
+                    }
+                    if (tokens.size() > 3) {
+                        return make_unique<VariableAssignment>(tokens[1], tokens[3]);
+                    } else {
+                        throw std::runtime_error("Syntax error. Expected assignment right hand side but got nothing");
+                    }
+                }
             } else {
                 throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
             }
@@ -224,29 +237,34 @@ int main(const int argc, char* argv[]) {
     //loop through everything and pull out the variable declarations  and make them proper memory addresses
 
     //check all instructions to make sure all of their variables actually exist / resolve them
-    for (auto &instruction : partialInstructions) {
-        for (int i=0;i<instruction->numVars();i++) {
-            unique_ptr<DataType> &dataInput = instruction->getVariable(i);
-            if (dataInput != nullptr && dataInput->isVariable()) {
-                VariableDataType &var = dynamic_cast<VariableDataType&>(*dataInput);
-                //check if it is a global var:
-                bool found = false;
-                for (size_t j=0;j<globalVars.size();j++) {
-                    if (globalVars[j] == var.getVarName()) {//found it!
-                        var.resolve(false,static_cast<int>(j));
-                        found = true;
-                        break;
+    try {
+        for (auto &instruction : partialInstructions) {
+            for (int i=0;i<instruction->numVars();i++) {
+                unique_ptr<DataType> &dataInput = instruction->getVariable(i);
+                if (dataInput != nullptr && dataInput->isVariable()) {
+                    VariableDataType &var = dynamic_cast<VariableDataType&>(*dataInput);
+                    //check if it is a global var:
+                    bool found = false;
+                    for (size_t j=0;j<globalVars.size();j++) {
+                        if (globalVars[j] == var.getVarName()) {//found it!
+                            var.resolve(false,static_cast<int>(j));
+                            found = true;
+                            break;
+                        }
                     }
+                    if (found) {
+                        continue;
+                    }
+                    //check stack vars
+                    //TODO
+                    //didnt find it
+                    throw std::runtime_error("Variable " + var.getVarName() + " not found");
                 }
-                if (found) {
-                    continue;
-                }
-                //check stack vars
-                //TODO
-                //didnt find it
-                throw std::runtime_error("Variable " + var.getVarName() + " not found");
             }
         }
+    } catch (exception& e) {
+        cerr << "Error while resolving variables: "<<e.what() << endl;
+        return EXIT_FAILURE;
     }
 
     //cached register assignment
