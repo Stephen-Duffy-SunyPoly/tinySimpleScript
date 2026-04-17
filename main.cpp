@@ -42,7 +42,7 @@ string lcdConsts = "; LCD Peripherals\n"
 
 //this process pipeline include several stages:
 /* 1. Expansion - expand macro function into their required assembly, this includes thing like rect or variable assignment. this stage includes no hard registers
- * 2. variable assignment - all values except immediate get represented by a variable who gets an assigned memory address or stack address
+ * 2. variable assignment - all values except immediate get represented by a variable who gets an assigned memory offset or stack offset
  * 3. cached register assignment - all variables and required immediate are assigned to registers for usage in a style where registers are treated as a fully associated cache
 */
 //the variable assignment stage is where the names of variables existing will be resolved
@@ -193,6 +193,10 @@ int main(const int argc, char* argv[]) {
     }
 
     //cached register assignment
+
+    //each instruction will be passed a register resolver to their assembl instruction
+    //for each data type that requires resolution, the instruction will pass the data type and their current instruction buffer into the resolver.
+    //the resolver may add instructions to the list and then will return what the instruction should use in place of the data
 
     for (auto &a: partialInstructions) {
         cout << a->toString() << endl;
