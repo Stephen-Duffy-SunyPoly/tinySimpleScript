@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "commonHighLevel.hpp"
 #include "lcdHighLevel.hpp"
+#include <cpp-subprocess/subprocess.hpp>
 
 using namespace std;
 
@@ -216,6 +217,23 @@ int main(const int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    bool assemble = false;
+    string assembler;
+
+    //parse arguments
+    for (size_t i=1;i<args.size();i++) {
+        if (args[i] == "--tnasm") {
+            if (args.size() > i+1) {
+                assembler = args[++i];
+                assemble = true;
+                i++;
+            } else {
+                cerr << "Expected file path to tnasm but got nothing"<<endl;
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
     ifstream fileIn(args[0]);
     if (!fileIn.is_open()) {
         cerr << "Failed to open file " << filesystem::absolute(args[0]) << endl;
@@ -343,6 +361,19 @@ int main(const int argc, char* argv[]) {
     assemblyOut.flush();
     assemblyOut.close();
     cout << "Building completed successfully, assembly file generated" <<endl;
+
+    if (assemble) {
+        try {
+            cout << "assembling generated assembly" << endl;
+            auto tnasm = subprocess::Popen({assembler,outFileName+".asm"},subprocess::output{subprocess::PIPE});
+            auto outputBuffer = tnasm.communicate().first;
+            cout << outputBuffer.buf.data() << endl;
+        } catch (exception& e) {
+            cout.flush();
+            cerr << "Error while running assembler: " << e.what() << endl;
+            return EXIT_FAILURE;
+        }
+    }
 
     return EXIT_SUCCESS;
 }

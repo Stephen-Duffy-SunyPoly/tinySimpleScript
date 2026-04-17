@@ -336,6 +336,21 @@ public:
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
 };
 
+class NegatePartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> val;
+public:
+    NegatePartialInstruction(std::unique_ptr<DataType> val) :val(std::move(val)) {}
+
+    std::string toString() override {
+        return "negate "+val->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
 
 class HighLevelConstruct {
 public:

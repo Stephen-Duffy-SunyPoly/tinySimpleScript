@@ -322,3 +322,14 @@ std::vector<FinishedInstruction> DecrementPartialInstruction::assemble(RegisterR
     finishedInstructions.push_back({"dec",1,op1Reg,{}});
     return finishedInstructions;
 }
+
+std::unique_ptr<DataType> & NegatePartialInstruction::getVariable(int vn) {
+    return val;
+}
+
+std::vector<FinishedInstruction> NegatePartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
+    finishedInstructions.push_back({"neg",1,op1Reg,{}});
+    return finishedInstructions;
+}
