@@ -208,9 +208,29 @@ int main(const int argc, char* argv[]) {
         }
     }
 
-    for (auto &a: finishedInstructions) {
-        cout << a.produce() << endl;
+    filesystem::path inFilePath(args[0]);
+    std::string outFileName = inFilePath.stem().string();
+
+    ofstream assemblyOut(outFileName+".asm");
+
+    assemblyOut << systemConsts<<endl<<endl;
+    if (LCDSystem) {
+        assemblyOut << lcdConsts << endl<<endl;
     }
+
+    assemblyOut << "; global vars"<<endl;
+    for (size_t i=0;i<globalVars.size();i++) {
+        assemblyOut << ".const " << globalVars[i] << "\t" << i << endl;
+    }
+    assemblyOut << endl;
+    for (auto &a: finishedInstructions) {
+        cout << a.produce() << endl;//this is probably temporary
+        assemblyOut << a.produce() << endl;
+    }
+
+    assemblyOut.flush();
+    assemblyOut.close();
+    cout << "Building completed successfully, assembly file generated" <<endl;
 
     return EXIT_SUCCESS;
 }
