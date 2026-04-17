@@ -110,3 +110,165 @@ std::vector<std::unique_ptr<PartialInstruction>> FillFunction::expand() {
 std::string FillFunction::toString() {
     return "fill ("+color->toString()+")";
 }
+
+StrokeFunction::StrokeFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type stroke. Empty parameter!");
+    }
+
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function stroke. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function stroke. Missing param 1");
+    }
+    color = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> StrokeFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[STROKE]",std::move(color)));
+    return instructions;
+}
+
+std::string StrokeFunction::toString() {
+    return "stroke ("+color->toString()+")";
+}
+
+SetFillFunction::SetFillFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setFill. Empty parameter!");
+    }
+
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setFill. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setFill. Missing param 1");
+    }
+    value = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetFillFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[DRAWFILL]",std::move(value)));
+    return instructions;
+}
+
+std::string SetFillFunction::toString() {
+    return "setFill ("+value->toString()+")";
+}
+
+SetStrokeFunction::SetStrokeFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setStroke. Empty parameter!");
+    }
+
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setStroke. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setStroke. Missing param 1");
+    }
+    value = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetStrokeFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[DRAWSTROKE]",std::move(value)));
+    return instructions;
+}
+
+std::string SetStrokeFunction::toString() {
+    return "setStroke ("+value->toString()+")";
+}
+
+PointFunction::PointFunction(const std::string &line) {
+    //get each parameter as a string
+    size_t nextComa = line.find(',');
+    if (nextComa == std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function type point. Not enough parameters!");
+    }
+    std::string param1 = line.substr(0, nextComa);
+    std::string continueStr = line.substr(nextComa+1);
+    nextComa = continueStr.find(',');
+    if (nextComa == std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function type point. Not enough parameters!");
+    }
+    std::string param2 = continueStr.substr(0,nextComa);
+    continueStr = continueStr.substr(nextComa+1);
+    nextComa = continueStr.find(',');
+    if (nextComa != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function type point. Too many parameters!");
+    }
+
+    //trim each parameter
+    param1 = trim(param1);
+    param2 = trim(param2);
+    //make sure there is actually somthing in all of them
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function type point. Missing param 1");
+    }
+    if (param2.empty()) {
+        throw std::runtime_error("Invalid parameters for function type point. Missing param 2");
+    }
+    //parse them, figure out what they are
+    xPos = parseDataType(param1);
+    yPos = parseDataType(param2);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> PointFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[X1]",std::move(xPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[Y1]",std::move(yPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[POINT]",std::make_unique<ZeroDataType>()));
+    return instructions;
+}
+
+std::string PointFunction::toString() {
+    return "point ("+xPos->toString()+", "+yPos->toString()+")";
+}
+
+PrintFunction::PrintFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type print. Empty parameter!");
+    }
+
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function print. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function print. Missing param 1");
+    }
+    value = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> PrintFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[TERM]",std::move(value)));
+    return instructions;
+}
+
+std::string PrintFunction::toString() {
+    return "print ("+value->toString()+")";
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ClearFunction::expand() {
+    std::unique_ptr<DataType> zero = std::make_unique<ZeroDataType>();
+    std::unique_ptr<DataType> sixtyThree = std::make_unique<ImmediateDataType>(63);
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[X1]",std::move(zero)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[Y1]",std::move(zero)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[X2]",std::move(sixtyThree)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[Y2]",std::move(sixtyThree)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[RECT]",std::make_unique<ZeroDataType>()));
+    return instructions;
+}
+
+std::string ClearFunction::toString() {
+    return "clear";
+}

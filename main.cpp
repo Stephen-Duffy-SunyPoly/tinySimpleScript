@@ -129,6 +129,12 @@ int main(const int argc, char* argv[]) {
         expansionFunctions.insert({"update",{[](const string &line) {return make_unique<UpdateFunction>(line);}}});
         expansionFunctions.insert({"rect",{[](const string &line) {return make_unique<RectangleFunction>(line);}}});
         expansionFunctions.insert({"fill",{[](const string &line) {return make_unique<FillFunction>(line);}}});
+        expansionFunctions.insert({"stroke",{[](const string &line) {return make_unique<StrokeFunction>(line);}}});
+        expansionFunctions.insert({"setFill",{[](const string &line) {return make_unique<SetFillFunction>(line);}}});
+        expansionFunctions.insert({"setStroke",{[](const string &line) {return make_unique<SetStrokeFunction>(line);}}});
+        expansionFunctions.insert({"point",{[](const string &line) {return make_unique<PointFunction>(line);}}});
+        expansionFunctions.insert({"print",{[](const string &line) {return make_unique<PrintFunction>(line);}}});
+        expansionFunctions.insert({"clear",{[](const string &line) {return make_unique<ClearFunction>(line);}}});
     } else {
         //load edison system specific
     }
