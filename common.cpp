@@ -449,10 +449,32 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
     return finalInstructions;
 }
 
+void BlockPartialInstruction::validatFunctionCalls(std::vector<std::string> &functionNames) {
+    for (const auto & ir:internalInstructions) {
+        ir->validatFunctionCalls(functionNames);
+    }
+}
+
 std::vector<FinishedInstruction> FunctionCallPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<FinishedInstruction> finishedInstructions;
     resolver.flushGlobalVars(finishedInstructions);
     //note: pushing of params and return values should be done in other partial instructions created by the high level operation
     finishedInstructions.push_back({"cal",1,"!"+name,"",false});
+    return finishedInstructions;
+}
+
+void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<std::string> &functionNames) {
+    for (auto &fname:functionNames) {
+        if (fname == this->name) {
+            return;
+        }
+    }
+    throw std::runtime_error("Function not found: "+name);
+}
+
+std::vector<FinishedInstruction> TrapPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    finishedInstructions.emplace_back("stupidVerlyLongTrapLabel_2",0,"","",true);
+    finishedInstructions.emplace_back("jmp",1,"!stupidVerlyLongTrapLabel_2","",false);
     return finishedInstructions;
 }

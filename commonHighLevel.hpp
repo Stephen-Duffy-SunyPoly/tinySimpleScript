@@ -119,3 +119,10 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class TrapHighLevelOperation: public HighLevelConstruct {
+public:
+    explicit TrapHighLevelOperation([[maybe_unused]] const std::string& line){}
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

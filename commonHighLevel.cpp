@@ -257,3 +257,13 @@ std::vector<std::unique_ptr<PartialInstruction>> CallUserFunctionHighLevelOperat
 std::string CallUserFunctionHighLevelOperation::toString() {
     return "Call "+name+"()";
 }
+
+std::vector<std::unique_ptr<PartialInstruction>> TrapHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<TrapPartialInstruction>());
+    return instructions;
+}
+
+std::string TrapHighLevelOperation::toString() {
+    return "trap";
+}

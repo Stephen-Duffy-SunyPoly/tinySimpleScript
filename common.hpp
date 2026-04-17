@@ -147,6 +147,7 @@ public:
     virtual int numVars() = 0;
     virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
     virtual std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) = 0;
+    virtual void validatFunctionCalls(std::vector<std::string>& functionNames){};
 };
 
 //stores a value directly to a known symbol
@@ -366,6 +367,7 @@ public:
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    void validatFunctionCalls(std::vector<std::string> &functionNames) override;
 };
 
 class FunctionCallPartialInstruction : public PartialInstruction {
@@ -383,8 +385,23 @@ public:
         return ignore;
     }
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    void validatFunctionCalls(std::vector<std::string> &functionNames) override;
 };
 
+class TrapPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> ignore;//its null just so there is a valid def for get variable
+public:
+  int numVars() override {
+      return 0;
+  }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+      return ignore;
+  }
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::string toString() override {
+        return "trap";
+    }
+};
 
 class HighLevelConstruct {
 public:

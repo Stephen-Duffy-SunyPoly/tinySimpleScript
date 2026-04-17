@@ -296,6 +296,8 @@ int main(const int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    expansionFunctions.insert({"trap",{[](const string &line) {return make_unique<TrapHighLevelOperation>(line);}}});
+
     //load the langue constructs:
     if (LCDSystem) {
         expansionFunctions.insert({"update",{[](const string &line) {return make_unique<UpdateFunction>(line);}}});
@@ -348,6 +350,7 @@ int main(const int argc, char* argv[]) {
     //check all instructions to make sure all of their variables actually exist / resolve them
     try {
         for (auto &instruction : partialInstructions) {
+            instruction->validatFunctionCalls(functions);
             for (int i=0;i<instruction->numVars();i++) {
                 unique_ptr<DataType> &dataInput = instruction->getVariable(i);
                 if (dataInput != nullptr && dataInput->isVariable()) {

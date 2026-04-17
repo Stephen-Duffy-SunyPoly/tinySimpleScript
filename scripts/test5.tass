@@ -1,4 +1,4 @@
-//this file test the yser function system
+//this file test the user function system
 fill(1024)
 stroke(2048)
 
@@ -23,6 +23,7 @@ main()
 
 update()
 
+trap()
 
 function main(){
     line(g1,g1,g2,g2)
