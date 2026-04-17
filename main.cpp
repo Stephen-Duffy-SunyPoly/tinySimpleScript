@@ -69,8 +69,12 @@ vector<string> globalVars;
 vector<Register> registers;
 
 unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
-    //TODO strip out comments
-    string lineTrimmed = trim(line);
+    size_t commentStart = line.find("//");
+    if (commentStart == string::npos) {
+        commentStart = line.size();
+    }
+    string noComments = line.substr(0, commentStart);
+    string lineTrimmed = trim(noComments);
     if (lineTrimmed.empty()) {
         return nullptr;
     }

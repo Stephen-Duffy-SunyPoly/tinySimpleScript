@@ -1,3 +1,4 @@
+//this file tests most of the other built in redner functions and test color changing per shape
 stroke(1000)
 fill(1000)
 clear()

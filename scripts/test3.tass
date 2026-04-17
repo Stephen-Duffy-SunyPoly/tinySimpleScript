@@ -1,0 +1,60 @@
+//this file attempts to make a primitive animation by repeating the same stuf with slightly different positions
+//frame 1
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(0,10,10,20)
+update()
+
+//frame 2
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(2,10,12,20)
+update()
+
+//frame 3
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(4,10,14,20)
+update()
+
+//frame 4
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(6,10,16,20)
+update()
+
+//frame 5
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(8,10,18,20)
+update()
+
+//frame 6
+fill(2048)
+stroke(2048)
+clear()
+fill(0)
+stroke(80)
+rect(10,10,20,20)
+update()
+
+//more frames to attempt to show the last frame for longer
+update()
+update()
+update()
+update()
