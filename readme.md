@@ -21,3 +21,16 @@ LCD
 If you do not set stroke and fill initially, they will be whatever stroke and fill are when update is called the first time
 
 comments come after //
+
+operations:
+
+| Opperation   | Description             |
+|--------------|-------------------------|
+| var += val   | add val to var          |
+| var -= val   | subtract val from var   |
+| var *= val   | multiply val and var    |
+| var /= val   | divide val by var       |
+| var %= val   | mod val by var          |
+| var &= val   | bitwise and val and var |
+| var \|= val  | bitwise or val and var  |
+| var ^= val   | bitwise xor val and var |

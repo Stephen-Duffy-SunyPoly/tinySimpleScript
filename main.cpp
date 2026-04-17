@@ -177,6 +177,18 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
             return make_unique<AddHighLevelOperation>(tokens[0], tokens[2]);
         } else if (tokens[1] == "-=") {
             return make_unique<SubtractHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "*=") {
+            return make_unique<MultiplyHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "/=") {
+            return make_unique<DivideHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "%=") {
+            return make_unique<ModulusHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "&=") {
+            return make_unique<AndHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "|=") {
+            return make_unique<OrHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "^=") {
+            return make_unique<XorHighLevelOperation>(tokens[0], tokens[2]);
         }
 
     }
@@ -224,7 +236,7 @@ int main(const int argc, char* argv[]) {
 
     string line;
     int lineNumber = 0;
-    //parse each line into the high level implmentation
+    //parse each line into the high level implementation
     while (getline(fileIn, line)) {
         lineNumber++;
         try {

@@ -210,6 +210,102 @@ public:
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
 };
 
+class MultiplyPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    MultiplyPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "multiply " + from->toString() + " width " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class DividePartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    DividePartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "divide " + from->toString() + " by " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class ModulusPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    ModulusPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "mod " + from->toString() + " by " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class AndPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    AndPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "and " + from->toString() + " with " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class OrPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    OrPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "or " + from->toString() + " with " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class XorPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> to;
+    std::unique_ptr<DataType> from;
+public:
+    XorPartialInstruction(std::unique_ptr<DataType> to, std::unique_ptr<DataType> from) : to(std::move(to)), from(std::move(from)) {}
+
+    std::string toString() override {
+        return "xor " + from->toString() + " with " + to->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;

@@ -1,9 +1,11 @@
 #include "common.hpp"
 
 std::string VariableDataType::asAsm() {
+    // ReSharper disable once CppDFAConstantConditions
     if (!resolved) {
         throw std::runtime_error("Attempted to assemble unresolved variable: "+varName);
     }
+    // ReSharper disable once CppDFAUnreachableCode
     if (stackVar) {
         return "[SP+"+std::to_string(offset)+"]";
     } else {
@@ -57,7 +59,8 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
         if (registers[i].immediate && !lookForVar && registers[i].imValue == imValue ) {
             foundIndex = static_cast<int>(i);
             break;
-        } else if (!registers[i].immediate && lookForVar &&registers[i].varName == varName) {
+        }
+        if (!registers[i].immediate && lookForVar &&registers[i].varName == varName) {
             foundIndex = static_cast<int>(i);
             break;
         }
@@ -175,5 +178,125 @@ std::vector<FinishedInstruction> SubtractPartialInstruction::assemble(RegisterRe
         op2Reg = from->asAsm();
     }
     finishedInstructions.push_back({"sub",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & MultiplyPartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> MultiplyPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"mpy",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & DividePartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> DividePartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"div",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & ModulusPartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> ModulusPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"mod",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & AndPartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> AndPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"and",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & OrPartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> OrPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"or",2,op1Reg,op2Reg});
+    return finishedInstructions;
+}
+
+std::unique_ptr<DataType> & XorPartialInstruction::getVariable(int vn) {
+    if (vn==0) {
+        return to;
+    }
+    return from;
+}
+
+std::vector<FinishedInstruction> XorPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (from->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(from,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = from->asAsm();
+    }
+    finishedInstructions.push_back({"xor",2,op1Reg,op2Reg});
     return finishedInstructions;
 }
