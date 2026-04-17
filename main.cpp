@@ -88,7 +88,6 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
     }
     //determine if it is prbly a function call or not a function call.
     size_t parenthesisIndex = lineTrimmed.find('(');
-    cout << parenthesisIndex <<" "<<lineTrimmed << endl;
     if (parenthesisIndex != string::npos) {
         //check for function def
         size_t firstSpace = lineTrimmed.find_first_of(WHITESPACE);
@@ -153,9 +152,10 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 return expansionFunctions[functionName].create(params);
             } else {
                 //it might be a user defined function!
+                return make_unique<CallUserFunctionHighLevelOperation>(functionName);
                 //do that here.
                 //for now tho:
-                throw std::runtime_error("Function " + functionName + " not found");
+                // throw std::runtime_error("Function " + functionName + " not found");
             }
         }
     } else {

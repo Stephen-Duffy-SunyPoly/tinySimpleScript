@@ -368,6 +368,23 @@ public:
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
 };
 
+class FunctionCallPartialInstruction : public PartialInstruction {
+    std::string name;
+    std::unique_ptr<DataType> ignore;//its null just so there is a valid def for get variable
+public:
+    FunctionCallPartialInstruction(std::string name): name(std::move(name)) {}
+    std::string toString() override {
+        return "function call to " + name;
+    }
+    int numVars() override {
+        return 0;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return ignore;
+    }
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
 
 class HighLevelConstruct {
 public:

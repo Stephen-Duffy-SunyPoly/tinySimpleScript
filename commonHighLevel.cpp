@@ -246,3 +246,14 @@ std::string UserFunctionHighLevelOperation::toString() {
     }
     return ss.str();
 }
+
+std::vector<std::unique_ptr<PartialInstruction>> CallUserFunctionHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    //TODO params
+    instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name)));
+    return instructions;
+}
+
+std::string CallUserFunctionHighLevelOperation::toString() {
+    return "Call "+name+"()";
+}

@@ -110,3 +110,12 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class CallUserFunctionHighLevelOperation: public HighLevelConstruct {
+    std::string name;
+    std::vector<std::unique_ptr<DataType>> params;//TODO
+public:
+    explicit CallUserFunctionHighLevelOperation([[maybe_unused]] const std::string& name): name(name) {}
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

@@ -448,3 +448,11 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
 
     return finalInstructions;
 }
+
+std::vector<FinishedInstruction> FunctionCallPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    resolver.flushGlobalVars(finishedInstructions);
+    //note: pushing of params and return values should be done in other partial instructions created by the high level operation
+    finishedInstructions.push_back({"cal",1,"!"+name,"",false});
+    return finishedInstructions;
+}
