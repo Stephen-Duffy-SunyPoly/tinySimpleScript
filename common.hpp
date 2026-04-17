@@ -44,6 +44,9 @@ class DataType {
 public:
     virtual ~DataType() =default;
     virtual std::string toString() = 0;
+    virtual bool isVariable() {
+        return false;
+    }
 };
 
 class VariableDataType : public DataType {
@@ -55,6 +58,17 @@ public:
     explicit VariableDataType(std::string varName) : varName(std::move(varName)) {}
     std::string toString() override {
         return "var_"+varName;
+    }
+    bool isVariable() override {
+        return true;
+    }
+    void resolve(bool stack, int addr) {
+        stackVar = stack;
+        address = addr;
+        resolved = true;
+    }
+    std::string getVarName() {
+        return varName;
     }
 };
 
@@ -82,6 +96,8 @@ class PartialInstruction {
 public:
     virtual ~PartialInstruction() =default;
     virtual std::string toString() = 0;
+    virtual int numVars() = 0;
+    virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
 };
 
 class DirectStorPartialInstruction : public PartialInstruction {
@@ -91,6 +107,12 @@ public:
     explicit DirectStorPartialInstruction(std::string storeTo, std::unique_ptr<DataType> value) : storeTo(std::move(storeTo)), value(std::move(value)) {}
     std::string toString() override {
         return "store "+value->toString()+" in "+storeTo;
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return value;
     }
 };
 

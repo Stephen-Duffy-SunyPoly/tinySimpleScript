@@ -64,6 +64,8 @@ struct HighLevelDescription {
 //the built in functions
 unordered_map<string, HighLevelDescription> expansionFunctions;
 
+vector<string> globalVars;
+
 vector<Register> registers;
 
 unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
@@ -149,6 +151,7 @@ int main(const int argc, char* argv[]) {
         }
     }
 
+    //Expansion
     vector<unique_ptr<PartialInstruction>> partialInstructions;
     //for each high level block
     for (auto &block : highLevelBlocks) {
@@ -158,6 +161,38 @@ int main(const int argc, char* argv[]) {
             partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
         }
     }
+
+    //variable assignment
+    //TODO
+    //loop through everything and pull out the variable declarations  and make them proper memory addresses
+
+    //check all instructions to make sure all of their variables actually exist / resolve them
+    for (auto &instruction : partialInstructions) {
+        for (int i=0;i<instruction->numVars();i++) {
+            unique_ptr<DataType> &dataInput = instruction->getVariable(i);
+            if (dataInput != nullptr && dataInput->isVariable()) {
+                VariableDataType &var = dynamic_cast<VariableDataType&>(*dataInput);
+                //check if it is a global var:
+                bool found = false;
+                for (size_t j=0;j<globalVars.size();j++) {
+                    if (globalVars[j] == var.getVarName()) {//found it!
+                        var.resolve(false,static_cast<int>(j));
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    continue;
+                }
+                //check stack vars
+                //TODO
+                //didnt find it
+                throw std::runtime_error("Variable " + var.getVarName() + " not found");
+            }
+        }
+    }
+
+    //cached register assignment
 
     for (auto &a: partialInstructions) {
         cout << a->toString() << endl;
