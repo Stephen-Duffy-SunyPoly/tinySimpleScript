@@ -17,3 +17,5 @@ LCD
 | clear()           | draws a rectablge the size of the screen |
 | point(x,y)        | draws a single pixel                     |
 | print(v)          | prints a value to the terminal           |
+| line(x1,y1,x2,y2) | draw a line between the points           |
+If you do not set stroke and fill initially, they will be whatever stroke and fill are when update is called the first time

@@ -94,3 +94,17 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class LineFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> xPos;
+    std::unique_ptr<DataType> yPos;
+    std::unique_ptr<DataType> x2Pos;
+    std::unique_ptr<DataType> y2Pos;
+public:
+    /**
+     * @param line The data trimmed between the parentheses
+     */
+    explicit LineFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

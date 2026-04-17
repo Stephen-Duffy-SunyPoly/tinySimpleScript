@@ -135,6 +135,7 @@ int main(const int argc, char* argv[]) {
         expansionFunctions.insert({"point",{[](const string &line) {return make_unique<PointFunction>(line);}}});
         expansionFunctions.insert({"print",{[](const string &line) {return make_unique<PrintFunction>(line);}}});
         expansionFunctions.insert({"clear",{[](const string &line) {return make_unique<ClearFunction>(line);}}});
+        expansionFunctions.insert({"line",{[](const string &line) {return make_unique<LineFunction>(line);}}});
     } else {
         //load edison system specific
     }
