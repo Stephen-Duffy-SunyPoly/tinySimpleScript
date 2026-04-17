@@ -38,6 +38,11 @@ string lcdConsts = "; LCD Peripherals\n"
 ".const TERM 0xFFFF\n"
 ".const KEY 0xFFFE";
 
+const vector<string> reservedWords = {//note to self, add other opperators to this list
+    "PORT_A_DIR", "PORT_B_DIR", "PORT_A", "PORT_B","RAND","RAND_BITS","LIVESCREEN","UPDATESCREEN","X1","Y1","X2","Y2","STROKE","FILL","DRAWFILL","DRAWSTROKE",
+    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar", "="
+};
+
 //the default mode of this lang is for the LCD system, the edison system, will be usable by a flag
 
 //this process pipeline include several stages:
@@ -103,6 +108,47 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
         }
     } else {
         //another type of expression
+        vector<string> tokens;
+        //tokenize the line
+        size_t firstSpace = lineTrimmed.find_first_of(WHITESPACE);
+        do {
+            tokens.push_back(lineTrimmed.substr(0,firstSpace));
+            lineTrimmed = lineTrimmed.substr(firstSpace+1);
+            lineTrimmed = trim(lineTrimmed);
+        } while ((firstSpace = lineTrimmed.find_first_of(WHITESPACE)) != string::npos);
+        if (!lineTrimmed.empty()) {
+            tokens.push_back(lineTrimmed);//add the final token
+        }
+        //first check the things who have a significant token as the first token
+        if (tokens[0] == "gvar") { //declaring global vars
+            //token 1 will be the name of the var
+            if (tokens.size() > 1) {
+                if (charIsNumber(tokens[1][0])) {
+                    throw std::runtime_error("Varables can not start with numbers");
+                }
+                //check if it is a allready reserved word
+                for (const string &word:reservedWords) {
+                    if (word == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " not allowed");
+                    }
+                }
+                //check if it is the same name as a pre defined function
+                if (expansionFunctions.contains(tokens[1])) {
+                    throw std::runtime_error("Variable name " + tokens[1] + " not allowed");
+                }
+                //check if it is already defined
+                for (const auto& s: globalVars) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " allready definedd");
+                    }
+                }
+                //great not lets define it
+                globalVars.push_back(tokens[1]);
+            } else {
+                throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
+            }
+        }
+
     }
     return nullptr;
 }

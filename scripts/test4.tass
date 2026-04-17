@@ -1,0 +1,5 @@
+//this file test the initial implementation of global variables
+gvar myvar
+
+rect(10,10,40,40)
+update()
