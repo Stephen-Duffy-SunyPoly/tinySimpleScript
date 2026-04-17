@@ -8,4 +8,5 @@ add_executable(tinySimplescript main.cpp
         lcdHighLevel.cpp
         lcdHighLevel.hpp
         commonHighLevel.cpp
-        commonHighLevel.hpp)
+        commonHighLevel.hpp
+        common.cpp)

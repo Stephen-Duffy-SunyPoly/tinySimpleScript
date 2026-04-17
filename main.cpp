@@ -160,6 +160,23 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
             } else {
                 throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
             }
+            return nullptr;
+        }
+        //end of first token significance
+        if (tokens.size() == 1) {
+            throw std::runtime_error("Syntax error. Invalid statement: "+ noComments);
+        }
+        //there are at leased 2 tokens now
+        //this is where ++ and -- go
+        if (tokens.size() < 3) {
+            throw std::runtime_error("Syntax error. Invalid statement: "+ noComments);
+        }
+        //there are at lasted 3 tokens now
+        //var opperators
+        if (tokens[1] == "+=") {
+            return make_unique<AddHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "-=") {
+            return make_unique<SubtractHighLevelOperation>(tokens[0], tokens[2]);
         }
 
     }
@@ -268,6 +285,8 @@ int main(const int argc, char* argv[]) {
     }
 
     //cached register assignment
+
+    //IMPORTANT before function calls, all registers that contain global vars that are dirty must flush their values to ram. This also goes for the end of any function
 
     //each instruction will be passed a register resolver to their assembl instruction
     //for each data type that requires resolution, the instruction will pass the data type and their current instruction buffer into the resolver.

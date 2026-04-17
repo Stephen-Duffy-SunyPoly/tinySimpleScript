@@ -1,6 +1,12 @@
 //this file test the initial implementation of global variables
 gvar myvar
 gvar my10 = 10
+gvar myvarPlus10
 
-rect(my10, 10,40 , 40)
+myvar += 2
+myvarPlus10 = myvar //inteory if I wanted to put alot of work in, we could allow the +10 to happen here in 1 lome, but that would be really annoying
+myvarPlus10 += 10
+rect(myvar, 10,myvarPlus10 , 40)
 update()
+//as it currently happens, due to the fact that this program is really short and not expected to loop.
+//the variables are allways loaded before use and are never flushed to RAM due to never needing to evict registers
