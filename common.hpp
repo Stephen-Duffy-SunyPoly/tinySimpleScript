@@ -152,6 +152,7 @@ public:
     registers(registers), localVars(localVars) {
         registersUsed.resize(registers.size());
     }
+
     std::string resolve(std::unique_ptr<DataType>& data, std::vector<FinishedInstruction>& finishedInstructions, bool wrightOp) {
         //check what the data is
         if (!data->needsResolve()) {//if it does not need register caching,
@@ -209,7 +210,8 @@ public:
                 finishedInstructions.push_back({"str",2,"["+registers[lruIndex].varName+"]",outputRegister});
             }
             //load the new value into the register
-            finishedInstructions.push_back({"lod",2,outputRegister,data->asAsm()});
+            const std::string loadCommand = lookForVar ? "lod": "set";
+            finishedInstructions.push_back({loadCommand,2,outputRegister,data->asAsm()});
 
             //reset this reg lru
             //set the dirty bit correctly and all the other register things
@@ -243,8 +245,10 @@ public:
     virtual std::string toString() = 0;
     virtual int numVars() = 0;
     virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
+    virtual std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) = 0;
 };
 
+//stores a value directly to a known symbol
 class DirectStorPartialInstruction : public PartialInstruction {
     std::string storeTo;
     std::unique_ptr<DataType> value;
@@ -258,6 +262,13 @@ public:
     }
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return value;
+    }
+
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override {
+        std::vector<FinishedInstruction> finishedInstructions;
+        std::string inputReg = resolver.resolve(value,finishedInstructions,false);
+        finishedInstructions.push_back({"str",2,storeTo,inputReg});
+        return finishedInstructions;
     }
 };
 

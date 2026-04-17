@@ -7,7 +7,7 @@ std::vector<std::unique_ptr<PartialInstruction>> UpdateFunction::expand() {
     //produced a single instruction that stores rZ in the UPDATE address
     //str [UPDATE], rZ
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("UPDATE", std::make_unique<ZeroDataType>()));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[UPDATE]", std::make_unique<ZeroDataType>()));
     return instructions;
 }
 
@@ -63,8 +63,8 @@ RectangleFunction::RectangleFunction(const std::string &line) {
     //parse them, figure out what they are
     xPos = parseDataType(param1);
     yPos = parseDataType(param2);
-    width = parseDataType(param3);
-    height = parseDataType(param4);
+    x2Pos = parseDataType(param3);
+    y2Pos = parseDataType(param4);
 }
 
 std::vector<std::unique_ptr<PartialInstruction>> RectangleFunction::expand() {
@@ -72,18 +72,18 @@ std::vector<std::unique_ptr<PartialInstruction>> RectangleFunction::expand() {
     //for each param
     //load the param if they are not 0, actually the register cache system will handle loading and storing of variables
     //store the value into appropriate address
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("X1",std::move(xPos)));
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("Y1",std::move(yPos)));
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("X2",std::move(width)));
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("Y2",std::move(height)));
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("RECT",std::make_unique<ZeroDataType>()));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[X1]",std::move(xPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[Y1]",std::move(yPos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[X2]",std::move(x2Pos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[Y2]",std::move(y2Pos)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[RECT]",std::make_unique<ZeroDataType>()));
 
     //store 0 into the rect address
     return instructions;
 }
 
 std::string RectangleFunction::toString() {
-    return "rectangle ( "+xPos->toString()+", "+yPos->toString()+", "+width->toString()+", "+height->toString()+" )";
+    return "rectangle ( "+xPos->toString()+", "+yPos->toString()+", "+x2Pos->toString()+", "+y2Pos->toString()+" )";
 }
 
 FillFunction::FillFunction(const std::string &line) {
@@ -103,7 +103,7 @@ FillFunction::FillFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> FillFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("FILL",std::move(color)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[FILL]",std::move(color)));
     return instructions;
 }
 

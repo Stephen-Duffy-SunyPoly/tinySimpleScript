@@ -197,11 +197,20 @@ int main(const int argc, char* argv[]) {
     //each instruction will be passed a register resolver to their assembl instruction
     //for each data type that requires resolution, the instruction will pass the data type and their current instruction buffer into the resolver.
     //the resolver may add instructions to the list and then will return what the instruction should use in place of the data
+    vector<string> tmpLocalvars;//TODO replace this with real local vars
+    RegisterResolver mainResolver(registers, tmpLocalvars);//each stack section gets its own resolver
 
-    for (auto &a: partialInstructions) {
-        cout << a->toString() << endl;
+    vector<FinishedInstruction> finishedInstructions;
+    for (auto &instruction: partialInstructions) {
+        vector<FinishedInstruction> tmp = instruction->assemble(mainResolver);
+        for (auto &instInfo : tmp) {
+            finishedInstructions.push_back(std::move(instInfo));
+        }
     }
 
+    for (auto &a: finishedInstructions) {
+        cout << a.produce() << endl;
+    }
 
     return EXIT_SUCCESS;
 }

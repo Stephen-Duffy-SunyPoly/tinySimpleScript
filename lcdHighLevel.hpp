@@ -23,8 +23,8 @@ class UpdateFunction: public HighLevelConstruct {
 class RectangleFunction: public HighLevelConstruct {
     std::unique_ptr<DataType> xPos;
     std::unique_ptr<DataType> yPos;
-    std::unique_ptr<DataType> width;
-    std::unique_ptr<DataType> height;
+    std::unique_ptr<DataType> x2Pos;
+    std::unique_ptr<DataType> y2Pos;
     public:
     /**
      * @param line The data trimmed between the parentheses
