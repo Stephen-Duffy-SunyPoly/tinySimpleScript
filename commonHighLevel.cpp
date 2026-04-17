@@ -1,6 +1,9 @@
 #include "commonHighLevel.hpp"
 
+#include <fstream>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 
 VariableAssignment::VariableAssignment(const std::string &name, const std::string &value) {
@@ -197,4 +200,49 @@ std::vector<std::unique_ptr<PartialInstruction>> DecrementHighLevelOperation::ex
 
 std::string DecrementHighLevelOperation::toString() {
     return var->toString() +" --";
+}
+
+UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string name, const std::string &params, std::ifstream &file, int& lineNumber) : name(std::move(name)){
+//parsing args here
+    std::string functionLine;
+    while (std::getline(file, functionLine)) {
+        lineNumber++;
+        std::string lineTrimmed = trim(functionLine);
+        if (lineTrimmed[0] == '}') {//if the line starts with the end of the function then assume it is the end of the function
+            return;
+        }
+        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed,file,lineNumber);
+        if (block != nullptr) {//enure that a blank line was not just processed
+            blocks.push_back(std::move(block));
+        }
+    }
+
+    throw std::runtime_error("Reached end of file while processing function, expected function end!");
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    //need a unique type that can pass the function block info on to the next stage as well as expand each component
+
+    //get the pascal instructions for all the content of this function
+    std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
+    //for each high level block
+    for (auto &block : blocks) {
+        //get the expanded content
+        std::vector<std::unique_ptr<PartialInstruction>> tmp = block->expand();
+        for (auto &instruction : tmp) {
+            partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
+        }
+    }
+    instructions. emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,""));
+    return instructions;
+}
+
+std::string UserFunctionHighLevelOperation::toString() {
+    std::stringstream ss;
+    ss << "function"<<std::endl;
+    for (auto &block: blocks) {
+        ss <<"\t" << block->toString() << std::endl;
+    }
+    return ss.str();
 }

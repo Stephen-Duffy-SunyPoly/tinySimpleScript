@@ -97,9 +97,6 @@ public:
     std::string asAsm() override {
         return std::to_string(value);
     }
-    int getValue() {
-        return value;
-    }
 };
 
 class ZeroDataType : public DataType {
@@ -120,6 +117,7 @@ struct FinishedInstruction {
     int operands;
     std::string op1;
     std::string op2;
+    bool label;
     [[nodiscard]] std::string produce() const;
 };
 
@@ -133,6 +131,12 @@ public:
         registersUsed.resize(registers.size());
     }
     std::string resolve(std::unique_ptr<DataType>& data, std::vector<FinishedInstruction>& finishedInstructions, bool wrightOp);
+    //call this after your done using this resolver
+    int backupRegisters(std::vector<FinishedInstruction>& finishedInstructions);
+    void restoreRegisters(std::vector<FinishedInstruction>& finishedInstructions);
+
+    //call before any function call or block code
+    void flushGlobalVars(std::vector<FinishedInstruction>& finishedInstructions) const;
 };
 
 
@@ -146,6 +150,7 @@ public:
 };
 
 //stores a value directly to a known symbol
+
 class DirectStorPartialInstruction : public PartialInstruction {
     std::string storeTo;
     std::unique_ptr<DataType> value;
@@ -351,6 +356,18 @@ public:
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
 };
 
+class BlockPartialInstruction : public PartialInstruction {
+    std::vector<std::unique_ptr<PartialInstruction>> internalInstructions;
+    std::string name;
+    std::string endJmp;
+public:
+    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)) {}
+    std::string toString() override;
+    int numVars() override;
+    std::unique_ptr<DataType>& getVariable(int vn) override;
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
 
 class HighLevelConstruct {
 public:
@@ -382,3 +399,6 @@ inline std::unique_ptr<DataType> parseDataType(const std::string& value) {
     }
     return std::make_unique<VariableDataType>(value);
 }
+
+//defined in main
+std::unique_ptr<HighLevelConstruct> parseFileLine(const std::string& line, std::ifstream& file, int &lineNumber);

@@ -14,14 +14,19 @@ std::string VariableDataType::asAsm() {
 }
 
 std::string FinishedInstruction::produce() const {
-    std::string result = "\t";
-    result += operation;
-    if (operands > 0) {
-        result +=" ";
-        result += op1;
-        if (operands > 1) {
-            result += ", ";
-            result += op2;
+    std::string result;
+    if (label) {
+        result += "!" + operation;
+    } else {
+        result = "\t";
+        result += operation;
+        if (operands > 0) {
+            result +=" ";
+            result += op1;
+            if (operands > 1) {
+                result += ", ";
+                result += op2;
+            }
         }
     }
     //add comment here
@@ -112,6 +117,49 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
         outputRegister[1] += static_cast<char>(foundIndex); // NOLINT(*-narrowing-conversions)
     }
     return outputRegister;
+}
+
+int RegisterResolver::backupRegisters(std::vector<FinishedInstruction> &finishedInstructions) {
+    //assuming all globals have been flushed
+    int uregCnt = 0;
+    for (size_t i = 0; i < registers.size(); i++) {
+        if (registersUsed[i]) {//this register has been used, back it up!
+            std::string regName = "rA";
+            regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
+            finishedInstructions.emplace_back("psh",1,regName);
+            uregCnt++;
+        }
+    }
+    return uregCnt;
+}
+
+void RegisterResolver::restoreRegisters(std::vector<FinishedInstruction> &finishedInstructions) {
+    for (int i = static_cast<int>(registers.size()) - 1; i >= 0; i--) {
+        if (registersUsed[i]) {
+            std::string regName = "rA";
+            regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
+            finishedInstructions.emplace_back("pop",1,regName);
+        }
+    }
+}
+
+void RegisterResolver::flushGlobalVars(std::vector<FinishedInstruction> &finishedInstructions) const {
+    for (size_t i = 0; i < registers.size(); i++) {
+        //TODO check this id a global var once we have a way to check that stuff
+        if (!registers[i].varName.empty()){
+            if (registers[i].dirty) {
+                std::string outputRegister = "rA";
+                outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
+                finishedInstructions.push_back({"str",2,"["+registers[i].varName+"]",outputRegister});
+                //clear this reg
+                registers[i].dirty = false;
+            }
+            //make this as an empty reg
+            registers[i].varName = "";
+            registers[i].lru = 10000000;
+            registers[i].imValue =0;
+        }
+    }
 }
 
 std::vector<FinishedInstruction> DirectStorPartialInstruction::assemble(RegisterResolver &resolver) {
@@ -332,4 +380,71 @@ std::vector<FinishedInstruction> NegatePartialInstruction::assemble(RegisterReso
     std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
     finishedInstructions.push_back({"neg",1,op1Reg,{}});
     return finishedInstructions;
+}
+
+std::string BlockPartialInstruction::toString() {
+    return "block"; //TODO make this print more stuf
+}
+
+int BlockPartialInstruction::numVars() {
+    int total = 0;
+    for (auto & inst:internalInstructions) {
+        total += inst->numVars();
+    }
+    return total;
+}
+
+std::unique_ptr<DataType> & BlockPartialInstruction::getVariable(int vn) {
+    int rt =0;//running total
+    for (auto & inst:internalInstructions) {
+        int ni = inst->numVars();
+        if (rt+ni > vn) {//if adding this instructions vars to the total pust the one we want out of reach
+            return inst->getVariable(vn-rt);//its in this one
+        }
+        rt += ni;
+    }
+    return internalInstructions[0]->getVariable(0);//fail safe
+}
+
+std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<Register> registers;
+    for (int i=0;i<5;i++) {
+        registers.emplace_back(i);
+    }
+    std::vector<std::string> tmpStackVars;
+    std::vector<FinishedInstruction> finalInstructions;
+    RegisterResolver blockResolver(registers,tmpStackVars);
+    std::vector<FinishedInstruction> inProgressInstructions;
+    //get the assembled form of all the content
+    for (auto &instruction: internalInstructions) {
+        std::vector<FinishedInstruction> tmp = instruction->assemble(blockResolver);
+        for (auto &instInfo : tmp) {
+            inProgressInstructions.push_back(std::move(instInfo));
+        }
+    }
+    //add label
+    finalInstructions.emplace_back(name,0,"","",true);
+    //pre pend all the register and stack var prep
+    int stackSize = blockResolver.backupRegisters(finalInstructions);
+    //push stack varas here
+    //add all the computed instructions
+    for (auto &instruction: inProgressInstructions) {
+        finalInstructions.push_back(std::move(instruction));
+    }
+
+    //flush changed global vars
+    blockResolver.flushGlobalVars(finalInstructions);
+
+    //add the stack cleanup
+    //pop stack vars here
+    blockResolver.restoreRegisters(finalInstructions);
+
+    //add final jump for return
+    if (endJmp.empty()) {
+        finalInstructions.emplace_back("ret",0,"","",false);
+    } else {
+        finalInstructions.emplace_back("jmp",1,"!"+endJmp,"",false);
+    }
+
+    return finalInstructions;
 }

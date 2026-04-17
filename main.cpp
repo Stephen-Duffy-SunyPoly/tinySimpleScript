@@ -42,7 +42,7 @@ string lcdConsts = "; LCD Peripherals\n"
 
 const vector<string> reservedWords = {//note to self, add other opperators to this list
     "PORT_A_DIR", "PORT_B_DIR", "PORT_A", "PORT_B","RAND","RAND_BITS","LIVESCREEN","UPDATESCREEN","X1","Y1","X2","Y2","STROKE","FILL","DRAWFILL","DRAWSTROKE",
-    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar", "="
+    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar", "=", "function"
 };
 
 //the default mode of this lang is for the LCD system, the edison system, will be usable by a flag
@@ -72,10 +72,11 @@ struct HighLevelDescription {
 unordered_map<string, HighLevelDescription> expansionFunctions;
 
 vector<string> globalVars;
+vector<string> functions;
 
 vector<Register> registers;
 
-unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
+unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber) {
     size_t commentStart = line.find("//");
     if (commentStart == string::npos) {
         commentStart = line.size();
@@ -86,27 +87,76 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
         return nullptr;
     }
     //determine if it is prbly a function call or not a function call.
-    //TODO make sure that this is not a function def first
     size_t parenthesisIndex = lineTrimmed.find('(');
+    cout << parenthesisIndex <<" "<<lineTrimmed << endl;
     if (parenthesisIndex != string::npos) {
-        //its a function!!!!
-        string functionName = lineTrimmed.substr(0,parenthesisIndex);
-        functionName = trim(functionName);
-        //get the parameters
-        string params = lineTrimmed.substr(parenthesisIndex+1);
-        size_t closeParenthesisIndex = params.find(')');
-        if (closeParenthesisIndex == string::npos) {
-            throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
-        }
-        params = params.substr(0,closeParenthesisIndex);
-        params = trim(params);
-        if (expansionFunctions.contains(functionName)) {
-            return expansionFunctions[functionName].create(params);
+        //check for function def
+        size_t firstSpace = lineTrimmed.find_first_of(WHITESPACE);
+        string firstToken = lineTrimmed.substr(0,firstSpace);
+        firstToken = trim(firstToken);
+        if (firstToken == "function") {//its a funcitond def!
+            lineTrimmed = lineTrimmed.substr(firstSpace+1);//remove the word function from the start of the line
+            parenthesisIndex = lineTrimmed.find('(');
+            string functionName = lineTrimmed.substr(0,parenthesisIndex);
+            functionName = trim(functionName);
+            //validate the name
+            if (charIsNumber(functionName[0])) {
+                throw std::runtime_error("Variable can not start with numbers");
+            }
+            //check if it is a allready reserved word
+            for (const string &word:reservedWords) {
+                if (word == functionName) {
+                    throw std::runtime_error("Variable name " + functionName + " not allowed");
+                }
+            }
+            //check if it is the same name as a pre defined function
+            if (expansionFunctions.contains(functionName)) {
+                throw std::runtime_error("Function name " + functionName + " not allowed");
+            }
+            //check if it is already defined
+            for (const auto& s: globalVars) {
+                if (s == functionName) {
+                    throw std::runtime_error("Function name " + functionName + " already defined");
+                }
+            }
+            //check if a function with this name already exists
+            for (const auto& s: functions) {
+                if (s == functionName) {
+                    throw std::runtime_error("Function name " + functionName + " already defined");
+                }
+            }
+            //get the parameters
+            string params = lineTrimmed.substr(parenthesisIndex+1);
+            size_t closeParenthesisIndex = params.find(')');
+            if (closeParenthesisIndex == string::npos) {
+                throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
+            }
+            size_t openBraceIndex = params.find('{');
+            if (openBraceIndex == string::npos || openBraceIndex < closeParenthesisIndex) {
+                throw std::runtime_error("Syntax Error, Function opening expected '{' after ')");
+            }
+            functions.push_back(functionName);
+            return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber);
         } else {
-            //it might be a user defined function!
-            //do that here.
-            //for now tho:
-            throw std::runtime_error("Function " + functionName + " not found");
+            //its a function!!!!
+            string functionName = lineTrimmed.substr(0,parenthesisIndex);
+            functionName = trim(functionName);
+            //get the parameters
+            string params = lineTrimmed.substr(parenthesisIndex+1);
+            size_t closeParenthesisIndex = params.find(')');
+            if (closeParenthesisIndex == string::npos) {
+                throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
+            }
+            params = params.substr(0,closeParenthesisIndex);
+            params = trim(params);
+            if (expansionFunctions.contains(functionName)) {
+                return expansionFunctions[functionName].create(params);
+            } else {
+                //it might be a user defined function!
+                //do that here.
+                //for now tho:
+                throw std::runtime_error("Function " + functionName + " not found");
+            }
         }
     } else {
         //another type of expression
@@ -141,7 +191,13 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line) {
                 //check if it is already defined
                 for (const auto& s: globalVars) {
                     if (s == tokens[1]) {
-                        throw std::runtime_error("Variable name " + tokens[1] + " allready definedd");
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
+                    }
+                }
+                //check if it is defined as a funcion
+                for (const auto& s: functions) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
                     }
                 }
                 //great not lets define it
@@ -264,7 +320,7 @@ int main(const int argc, char* argv[]) {
     while (getline(fileIn, line)) {
         lineNumber++;
         try {
-            unique_ptr<HighLevelConstruct> block = parseFileLine(line);
+            unique_ptr<HighLevelConstruct> block = parseFileLine(line,fileIn,lineNumber);
             if (block != nullptr) {//enure that a blank line was not just processed
                 highLevelBlocks.push_back(std::move(block));
             }

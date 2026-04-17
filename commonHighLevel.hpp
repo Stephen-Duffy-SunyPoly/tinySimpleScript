@@ -100,3 +100,13 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class UserFunctionHighLevelOperation: public HighLevelConstruct {
+    std::vector<std::unique_ptr<HighLevelConstruct>> blocks;
+    std::string name;
+    //TODO args
+public:
+    explicit UserFunctionHighLevelOperation(std::string  name, const std::string &params,std::ifstream& file, int & lineNumber);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
