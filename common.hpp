@@ -128,18 +128,21 @@ class RegisterResolver {
     std::vector<Register> &registers;
     std::vector<std::string> &localVars;
     std::vector<bool> registersUsed;
+    std::vector<FinishedInstruction*> partiallyResolvedStackVars;
+    std::vector<std::string> paramVars;
 public:
-    RegisterResolver(std::vector<Register> &registers, std::vector<std::string> &localVars) :
-    registers(registers), localVars(localVars) {
+    RegisterResolver(std::vector<Register> &registers, std::vector<std::string> &localVars, std::vector<std::string> paramVars) :
+    registers(registers), localVars(localVars), paramVars(std::move(paramVars)) {
         registersUsed.resize(registers.size());
     }
-    std::string resolve(std::unique_ptr<DataType>& data, std::vector<FinishedInstruction>& finishedInstructions, bool wrightOp);
+    std::string resolve(std::unique_ptr<DataType>& data, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, bool wrightOp);
     //call this after your done using this resolver
-    int backupRegisters(std::vector<FinishedInstruction>& finishedInstructions);
-    void restoreRegisters(std::vector<FinishedInstruction>& finishedInstructions);
+    int backupRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
+    void restoreRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
 
     //call before any function call or block code
-    void flushGlobalVars(std::vector<FinishedInstruction>& finishedInstructions) const;
+    void flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
+    void correctExtraStackVars(int numRegsUsed, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
 };
 
 
@@ -149,7 +152,7 @@ public:
     virtual std::string toString() = 0;
     virtual int numVars() = 0;
     virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
-    virtual std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) = 0;
+    virtual std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) = 0;
     virtual void validatFunctionCalls(std::vector<std::string>& functionNames){};
     virtual std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string>& outerVarNames) {
         return outerVarNames;
@@ -172,7 +175,7 @@ public:
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return value;
     }
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class VariableAssignPartialInstruction : public PartialInstruction {
@@ -187,7 +190,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class AddPartialInstruction : public PartialInstruction {
@@ -203,7 +206,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class SubtractPartialInstruction : public PartialInstruction {
@@ -219,7 +222,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class MultiplyPartialInstruction : public PartialInstruction {
@@ -235,7 +238,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class DividePartialInstruction : public PartialInstruction {
@@ -251,7 +254,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class ModulusPartialInstruction : public PartialInstruction {
@@ -267,7 +270,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class AndPartialInstruction : public PartialInstruction {
@@ -283,7 +286,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class OrPartialInstruction : public PartialInstruction {
@@ -299,7 +302,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class XorPartialInstruction : public PartialInstruction {
@@ -315,7 +318,7 @@ public:
         return 2;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class IncrementPartialInstruction : public PartialInstruction {
@@ -330,7 +333,7 @@ public:
         return 1;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class DecrementPartialInstruction : public PartialInstruction {
@@ -345,7 +348,7 @@ public:
         return 1;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class NegatePartialInstruction : public PartialInstruction {
@@ -360,7 +363,7 @@ public:
         return 1;
     }
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class BlockPartialInstruction : public PartialInstruction {
@@ -368,12 +371,13 @@ class BlockPartialInstruction : public PartialInstruction {
     std::string name;
     std::string endJmp;
     std::vector<std::string> localVariables;
+    std::vector<std::string> paramVars;
 public:
-    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, std::vector<std::string> &localVars) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars) {}
+    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, const std::vector<std::string> &localVars, std::vector<std::string> paramVars) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars), paramVars(std::move(paramVars)) {}
     std::string toString() override;
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
     void validatFunctionCalls(std::vector<std::string> &functionNames) override;
     std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string> &outerVarNames) override;
 };
@@ -392,7 +396,7 @@ public:
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return ignore;
     }
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
     void validatFunctionCalls(std::vector<std::string> &functionNames) override;
 };
 
@@ -405,7 +409,7 @@ public:
     std::unique_ptr<DataType>& getVariable(int vn) override {
       return ignore;
   }
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
     std::string toString() override {
         return "trap";
     }
@@ -424,7 +428,7 @@ public:
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return val;
     }
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class StackPopPartialInstruction : public PartialInstruction {
@@ -440,7 +444,7 @@ public:
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return val;
     }
-    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
 class HighLevelConstruct {

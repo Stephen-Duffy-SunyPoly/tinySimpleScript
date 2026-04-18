@@ -105,6 +105,7 @@ class UserFunctionHighLevelOperation: public HighLevelConstruct {
     std::vector<std::unique_ptr<HighLevelConstruct>> blocks;
     std::string name;
     std::vector<std::string> localVars;
+    std::vector<std::string> paramaters;
     //TODO args
 public:
     explicit UserFunctionHighLevelOperation(std::string  name, const std::string &params,std::ifstream& file, int & lineNumber);

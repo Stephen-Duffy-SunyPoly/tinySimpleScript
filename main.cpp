@@ -102,7 +102,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             if (charIsNumber(functionName[0])) {
                 throw std::runtime_error("Variable can not start with numbers");
             }
-            //check if it is a allready reserved word
+            //check if it is a already reserved word
             for (const string &word:reservedWords) {
                 if (word == functionName) {
                     throw std::runtime_error("Variable name " + functionName + " not allowed");
@@ -134,6 +134,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             if (openBraceIndex == string::npos || openBraceIndex < closeParenthesisIndex) {
                 throw std::runtime_error("Syntax Error, Function opening expected '{' after ')");
             }
+            params = params.substr(0,closeParenthesisIndex);
             functions.push_back(functionName);
             return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber);
         } else {
@@ -456,11 +457,11 @@ int main(const int argc, char* argv[]) {
     //each instruction will be passed a register resolver to their assembl instruction
     //for each data type that requires resolution, the instruction will pass the data type and their current instruction buffer into the resolver.
     //the resolver may add instructions to the list and then will return what the instruction should use in place of the data
-    RegisterResolver mainResolver(registers, topLevelLocalVars);//each stack section gets its own resolver
+    RegisterResolver mainResolver(registers, topLevelLocalVars,{});//each stack section gets its own resolver
 
-    vector<FinishedInstruction> finishedInstructions;
+    vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     for (auto &instruction: partialInstructions) {
-        vector<FinishedInstruction> tmp = instruction->assemble(mainResolver);
+        vector<std::unique_ptr<FinishedInstruction>> tmp = instruction->assemble(mainResolver);
         for (auto &instInfo : tmp) {
             finishedInstructions.push_back(std::move(instInfo));
         }
@@ -482,8 +483,8 @@ int main(const int argc, char* argv[]) {
     }
     assemblyOut << endl;
     for (auto &a: finishedInstructions) {
-        cout << a.produce() << endl;//this is probably temporary
-        assemblyOut << a.produce() << endl;
+        cout << a->produce() << endl;//this is probably temporary
+        assemblyOut << a->produce() << endl;
     }
 
     assemblyOut.flush();

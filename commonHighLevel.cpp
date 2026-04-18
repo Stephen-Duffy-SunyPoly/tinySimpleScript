@@ -1,6 +1,7 @@
 #include "commonHighLevel.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -203,7 +204,18 @@ std::string DecrementHighLevelOperation::toString() {
 }
 
 UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string name, const std::string &params, std::ifstream &file, int& lineNumber) : name(std::move(name)){
-//parsing args here
+    //parsing args here
+    std::string localParams = params;
+    size_t camaPos = localParams.find(',');
+    while (camaPos != std::string::npos) {
+        std::string param = localParams.substr(0,camaPos);
+        param = trim(param);
+        paramaters.push_back(param);
+        localParams = localParams.substr(camaPos+1);
+        camaPos = localParams.find(',');
+    }
+    paramaters.push_back(trim(localParams));
+
     std::string functionLine;
     while (std::getline(file, functionLine)) {
         lineNumber++;
@@ -237,7 +249,7 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
             partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
         }
     }
-    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars));
+    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters));
     return instructions;
 }
 

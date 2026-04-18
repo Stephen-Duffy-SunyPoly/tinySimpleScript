@@ -1,0 +1,15 @@
+//this file is to test passing parameters to functions
+
+fill(1024)
+stroke(2048)
+
+gvar g1 = 10
+gvar g2 = 20
+rect(g1,g1,g2,g2)
+
+trap()
+
+function argTest(arga, another){
+    line(another,arga,g1,g2)
+    arga ++
+}

@@ -1,6 +1,4 @@
 //this file is to test if local vars work correctly
-
-//this file test the user function system
 fill(1024)
 stroke(2048)
 

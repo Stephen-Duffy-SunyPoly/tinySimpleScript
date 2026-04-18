@@ -1,5 +1,7 @@
 #include "common.hpp"
 
+#include <iostream>
+
 std::string VariableDataType::asAsm() {
     // ReSharper disable once CppDFAConstantConditions
     if (!resolved) {
@@ -34,7 +36,7 @@ std::string FinishedInstruction::produce() const {
 }
 
 std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
-    std::vector<FinishedInstruction> &finishedInstructions, bool wrightOp) {
+    std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions, bool wrightOp) {
     //check what the data is
     if (!data->needsResolve()) {//if it does not need register caching,
         return data->asAsm();//just return what it is
@@ -96,21 +98,45 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
                     break;
                 }
             }
+            if (!stack) {
+                for (auto& var : paramVars) {
+                    if (var == registers[lruIndex].varName) {
+                        stack = true;
+                        break;
+                    }
+                }
+            }
             if (stack) {
-                finishedInstructions.push_back({"str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister});
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister));
+                std::cout << registers[imValue].imValue << std::endl;
+                if (registers[imValue].imValue >= localVars.size()) {
+                    FinishedInstruction * endPtr = finishedInstructions.back().get();
+                    partiallyResolvedStackVars.push_back(endPtr);//another microslop hallucinated error
+                }
             } else {
-                finishedInstructions.push_back({"str",2,"["+registers[lruIndex].varName+"]",outputRegister});
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[lruIndex].varName+"]",outputRegister));
             }
         }
         //load the new value into the register
         const std::string loadCommand = lookForVar ? "lod": "set";
-        finishedInstructions.push_back({loadCommand,2,outputRegister,data->asAsm()});
+        finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,outputRegister,data->asAsm()));
+        //check if it is extra stack and store the index for later correction
+        if (lookForVar) {
+            for (auto& var : paramVars) {
+                if (var == varName) {//if it is an extra stack var
+                    FinishedInstruction * endIndex = finishedInstructions.back().get();
+                    partiallyResolvedStackVars.push_back(endIndex);// add this instruction to the list
+                    break;
+                }
+            }
+        }
 
         //reset this reg lru
         //set the dirty bit correctly and all the other register things
         registers[lruIndex].lru =0;
         registers[lruIndex].dirty = wrightOp;
         registers[lruIndex].immediate = !lookForVar;
+        registersUsed[lruIndex] = true;
         if (lookForVar) {
             registers[lruIndex].varName = varName;
             registers[lruIndex].imValue = imValue; //set stack offset here for local vars
@@ -130,31 +156,31 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
     return outputRegister;
 }
 
-int RegisterResolver::backupRegisters(std::vector<FinishedInstruction> &finishedInstructions) {
+int RegisterResolver::backupRegisters(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) {
     //assuming all globals have been flushed
     int uregCnt = 0;
     for (size_t i = 0; i < registers.size(); i++) {
         if (registersUsed[i]) {//this register has been used, back it up!
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back("psh",1,regName);
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,regName));
             uregCnt++;
         }
     }
     return uregCnt;
 }
 
-void RegisterResolver::restoreRegisters(std::vector<FinishedInstruction> &finishedInstructions) {
+void RegisterResolver::restoreRegisters(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) {
     for (int i = static_cast<int>(registers.size()) - 1; i >= 0; i--) {
         if (registersUsed[i]) {
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back("pop",1,regName);
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,regName));
         }
     }
 }
 
-void RegisterResolver::flushGlobalVars(std::vector<FinishedInstruction> &finishedInstructions) const {
+void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) const {
     for (size_t i = 0; i < registers.size(); i++) {
         //TODO check this id a global var once we have a way to check that stuff
         if (!registers[i].varName.empty()){
@@ -166,10 +192,16 @@ void RegisterResolver::flushGlobalVars(std::vector<FinishedInstruction> &finishe
                         break;
                     }
                 }
+                for (auto& var : paramVars) {
+                    if (var== registers[i].varName) {
+                        stack = true;
+                        break;
+                    }
+                }
                 if (!stack) {
                     std::string outputRegister = "rA";
                     outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-                    finishedInstructions.push_back({"str",2,"["+registers[i].varName+"]",outputRegister});
+                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister));
                     //clear this reg
                     registers[i].dirty = false;
                 }
@@ -182,10 +214,37 @@ void RegisterResolver::flushGlobalVars(std::vector<FinishedInstruction> &finishe
     }
 }
 
-std::vector<FinishedInstruction> DirectStorPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+void RegisterResolver::correctExtraStackVars(int numRegsUsed, std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) const {
+    int offsetBy = numRegsUsed + 1;
+    //what is this has not elements
+    for (auto instruction: partiallyResolvedStackVars) {
+        std::string op1Val = instruction->op1;
+        if (op1Val.find_first_of("[sp+") != std::string::npos) {
+            size_t endInd = op1Val.find_first_of(']');
+            std::string numVal = op1Val.substr(4,endInd+1-4);
+            int spof = std::stoi(numVal);
+            if (spof >= localVars.size()) {
+                spof +=offsetBy;
+                instruction->op1 = "[sp+"+std::to_string(spof)+"]";
+            }
+        }
+        std::string op2Val = instruction->op2;
+        if (op2Val.find_first_of("[sp+") != std::string::npos) {
+            size_t endInd = op2Val.find_first_of(']');
+            std::string numVal = op2Val.substr(4,endInd+1-4);
+            int spof = std::stoi(numVal);
+            if (spof >= localVars.size()) {
+                spof +=offsetBy;
+                instruction->op2 = "[sp+"+std::to_string(spof)+"]";
+            }
+        }
+    }
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> DirectStorPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string inputReg = resolver.resolve(value,finishedInstructions,false);
-    finishedInstructions.push_back({"str",2,storeTo,inputReg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,storeTo,inputReg));
     return finishedInstructions;
 }
 
@@ -196,8 +255,8 @@ std::unique_ptr<DataType> & VariableAssignPartialInstruction::getVariable(int vn
     return from;
 }
 
-std::vector<FinishedInstruction> VariableAssignPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> VariableAssignPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -205,7 +264,7 @@ std::vector<FinishedInstruction> VariableAssignPartialInstruction::assemble(Regi
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"set",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("set",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -216,8 +275,8 @@ std::unique_ptr<DataType> & AddPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> AddPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> AddPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -225,7 +284,7 @@ std::vector<FinishedInstruction> AddPartialInstruction::assemble(RegisterResolve
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"add",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("add",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -236,8 +295,8 @@ std::unique_ptr<DataType> & SubtractPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> SubtractPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> SubtractPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -245,7 +304,7 @@ std::vector<FinishedInstruction> SubtractPartialInstruction::assemble(RegisterRe
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"sub",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("sub",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -256,8 +315,8 @@ std::unique_ptr<DataType> & MultiplyPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> MultiplyPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> MultiplyPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -265,7 +324,7 @@ std::vector<FinishedInstruction> MultiplyPartialInstruction::assemble(RegisterRe
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"mpy",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mpy",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -276,8 +335,8 @@ std::unique_ptr<DataType> & DividePartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> DividePartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> DividePartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -285,7 +344,7 @@ std::vector<FinishedInstruction> DividePartialInstruction::assemble(RegisterReso
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"div",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("div",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -296,8 +355,8 @@ std::unique_ptr<DataType> & ModulusPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> ModulusPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> ModulusPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -305,7 +364,7 @@ std::vector<FinishedInstruction> ModulusPartialInstruction::assemble(RegisterRes
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"mod",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mod",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -316,8 +375,8 @@ std::unique_ptr<DataType> & AndPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> AndPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> AndPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -325,7 +384,7 @@ std::vector<FinishedInstruction> AndPartialInstruction::assemble(RegisterResolve
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"and",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("and",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -336,8 +395,8 @@ std::unique_ptr<DataType> & OrPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> OrPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> OrPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -345,7 +404,7 @@ std::vector<FinishedInstruction> OrPartialInstruction::assemble(RegisterResolver
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"or",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("or",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -356,8 +415,8 @@ std::unique_ptr<DataType> & XorPartialInstruction::getVariable(int vn) {
     return from;
 }
 
-std::vector<FinishedInstruction> XorPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> XorPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (from->isVariable()) {//if it is a variable the resolve it
@@ -365,7 +424,7 @@ std::vector<FinishedInstruction> XorPartialInstruction::assemble(RegisterResolve
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
     }
-    finishedInstructions.push_back({"xor",2,op1Reg,op2Reg});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("xor",2,op1Reg,op2Reg));
     return finishedInstructions;
 }
 
@@ -373,10 +432,10 @@ std::unique_ptr<DataType> & IncrementPartialInstruction::getVariable(int vn) {
     return val;
 }
 
-std::vector<FinishedInstruction> IncrementPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> IncrementPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
-    finishedInstructions.push_back({"inc",1,op1Reg,{}});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("inc",1,op1Reg,"",false));
     return finishedInstructions;
 }
 
@@ -384,10 +443,10 @@ std::unique_ptr<DataType> & DecrementPartialInstruction::getVariable(int vn) {
     return val;
 }
 
-std::vector<FinishedInstruction> DecrementPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> DecrementPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
-    finishedInstructions.push_back({"dec",1,op1Reg,{}});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("dec",1,op1Reg,""));
     return finishedInstructions;
 }
 
@@ -395,10 +454,10 @@ std::unique_ptr<DataType> & NegatePartialInstruction::getVariable(int vn) {
     return val;
 }
 
-std::vector<FinishedInstruction> NegatePartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> NegatePartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg = resolver.resolve(val,finishedInstructions,true);
-    finishedInstructions.push_back({"neg",1,op1Reg,{}});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("neg",1,op1Reg,""));
     return finishedInstructions;
 }
 
@@ -426,25 +485,28 @@ std::unique_ptr<DataType> & BlockPartialInstruction::getVariable(int vn) {
     return internalInstructions[0]->getVariable(0);//fail safe
 }
 
-std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResolver &resolver) {
+std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<Register> registers;
     for (int i=0;i<5;i++) {
         registers.emplace_back(i);
     }
-    std::vector<FinishedInstruction> finalInstructions;
-    RegisterResolver blockResolver(registers,localVariables);
-    std::vector<FinishedInstruction> inProgressInstructions;
+    std::vector<std::unique_ptr<FinishedInstruction>> finalInstructions;
+    RegisterResolver blockResolver(registers,localVariables,paramVars);
+    std::vector<std::unique_ptr<FinishedInstruction>> inProgressInstructions;
     //get the assembled form of all the content
     for (auto &instruction: internalInstructions) {
-        std::vector<FinishedInstruction> tmp = instruction->assemble(blockResolver);
+        std::vector<std::unique_ptr<FinishedInstruction>> tmp = instruction->assemble(blockResolver);
         for (auto &instInfo : tmp) {
             inProgressInstructions.push_back(std::move(instInfo));
         }
     }
     //add label
-    finalInstructions.emplace_back(name,0,"","",true);
+    finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
     //pre pend all the register and stack var prep
-    blockResolver.backupRegisters(finalInstructions);
+    int numRegistersUsed = blockResolver.backupRegisters(finalInstructions);
+
+    //account for params stack offset
+    blockResolver.correctExtraStackVars(numRegistersUsed,inProgressInstructions);
     //push stack varas here
     //add all the computed instructions
     for (auto &instruction: inProgressInstructions) {
@@ -457,15 +519,15 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
     //add the stack cleanup
     //pop stack vars here
     for (size_t i=0;i<localVariables.size();i++) {
-        finalInstructions.emplace_back("pop",1,"rz","",false);
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,"rz","",false));
     }
     blockResolver.restoreRegisters(finalInstructions);
 
     //add final jump for return
     if (endJmp.empty()) {
-        finalInstructions.emplace_back("ret",0,"","",false);
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("ret",0,"","",false));
     } else {
-        finalInstructions.emplace_back("jmp",1,"!"+endJmp,"",false);
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("jmp",1,"!"+endJmp,"",false));
     }
 
     return finalInstructions;
@@ -478,11 +540,15 @@ void BlockPartialInstruction::validatFunctionCalls(std::vector<std::string> &fun
 }
 
 std::vector<std::string> BlockPartialInstruction::getLocalVarScope(int vn, std::vector<std::string> &outerVarNames) {
+    std::vector<std::string> localVarsAndParams(localVariables);
+    for (const auto & pv:paramVars) {
+        localVarsAndParams.push_back(pv);
+    }
     int rt =0;//running total
     for (auto & inst:internalInstructions) {
         int ni = inst->numVars();
         if (rt+ni > vn) {//if adding this instructions vars to the total pust the one we want out of reach
-            return inst->getLocalVarScope(vn-rt,localVariables);//its in this one
+            return inst->getLocalVarScope(vn-rt,localVarsAndParams);//its in this one
         }
         rt += ni;
     }
@@ -490,11 +556,11 @@ std::vector<std::string> BlockPartialInstruction::getLocalVarScope(int vn, std::
     return PartialInstruction::getLocalVarScope(vn, outerVarNames);
 }
 
-std::vector<FinishedInstruction> FunctionCallPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> FunctionCallPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     resolver.flushGlobalVars(finishedInstructions);
     //note: pushing of params and return values should be done in other partial instructions created by the high level operation
-    finishedInstructions.push_back({"cal",1,"!"+name,"",false});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("cal",1,"!"+name,"",false));
     return finishedInstructions;
 }
 
@@ -507,33 +573,36 @@ void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<std::strin
     throw std::runtime_error("Function not found: "+name);
 }
 
-std::vector<FinishedInstruction> TrapPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
-    finishedInstructions.emplace_back("stupidVerlyLongTrapLabel_2",0,"","",true);
-    finishedInstructions.emplace_back("jmp",1,"!stupidVerlyLongTrapLabel_2","",false);
+int trapCnt = 12;
+
+std::vector<std::unique_ptr<FinishedInstruction>> TrapPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("stupidVerlyLongTrapLabel_"+std::to_string(trapCnt),0,"","",true));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("jmp",1,"!stupidVerlyLongTrapLabel_"+std::to_string(trapCnt),"",false));
+    trapCnt++;
     return finishedInstructions;
 }
 
-std::vector<FinishedInstruction> StackPushPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> StackPushPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
         op1Reg = resolver.resolve(val,finishedInstructions,false);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
-    finishedInstructions.push_back({"psh",1,op1Reg,{}});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,op1Reg,""));
     return finishedInstructions;
 }
 
-std::vector<FinishedInstruction> StackPopPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<FinishedInstruction> finishedInstructions;
+std::vector<std::unique_ptr<FinishedInstruction>> StackPopPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
         op1Reg = resolver.resolve(val,finishedInstructions,false);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
-    finishedInstructions.push_back({"pop",1,op1Reg,{}});
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,op1Reg,""));
     return finishedInstructions;
 }
