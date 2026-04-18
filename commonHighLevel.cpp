@@ -220,7 +220,6 @@ UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &func
     if (!localParams.empty()) {
         paramaters.push_back(localParams);
     }
-    functionData.emplace_back(name, static_cast<int>(paramaters.size()));
 
     std::string functionLine;
     while (std::getline(file, functionLine)) {
@@ -228,6 +227,8 @@ UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &func
         std::string lineTrimmed = trim(functionLine);
         if (lineTrimmed[0] == '}') {
             //if the line starts with the end of the function then assume it is the end of the function
+            //we won't know if we are returning something until we get to the end of the function so make this entry here
+            functionData.emplace_back(name, static_cast<int>(paramaters.size()),returnsValue);
             return;
         }
         if (returnsValue) {//return must be the last statment in a funcion
@@ -295,7 +296,7 @@ std::string UserFunctionHighLevelOperation::toString() {
     return ss.str();
 }
 
-CallUserFunctionHighLevelOperation::CallUserFunctionHighLevelOperation(std::string name, const std::string &rawParams): name(std::move(name)) {
+CallUserFunctionHighLevelOperation::CallUserFunctionHighLevelOperation(std::string name, const std::string &rawParams, const std::string &returnTo): name(std::move(name)) {
     std::string localParams = rawParams;
     size_t camaPos = localParams.find(',');
     while (camaPos != std::string::npos) {
@@ -309,22 +310,34 @@ CallUserFunctionHighLevelOperation::CallUserFunctionHighLevelOperation(std::stri
     if (!localParams.empty()) {
         params.push_back(parseDataType(localParams));
     }
+    if (!returnTo.empty()) {
+        returnValueTo = parseDataType(returnTo);//now we know its returning something!
+    }
 }
 
 std::vector<std::unique_ptr<PartialInstruction>> CallUserFunctionHighLevelOperation::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
     //push all params onto the stack
-    //int the future remeber to account for return value!
+
+    instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+
     for (size_t i=0;i<params.size();i++) {
         //here i is also representing how much offset the stack currently has
         //the index af the actual param needs to be backwards tho
         size_t paramIndex = params.size()-i-1;
-        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::move(params[paramIndex]),static_cast<int>(i)));
+        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::move(params[paramIndex]),static_cast<int>(i+1)));//add 1 for the return value regardless of if it gets used
     }
-    instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name),static_cast<int>(params.size())));
+
+    instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name),static_cast<int>(params.size()),returnValueTo != nullptr));
     for (int i = static_cast<int>(params.size())-1; i >= 0; i--) {
         //pop the params into rz as we no longer care about them
-        instructions.emplace_back(std::make_unique<StackPopPartialInstruction>(std::make_unique<ZeroDataType>(),static_cast<int>(i)));
+        instructions.emplace_back(std::make_unique<StackPopPartialInstruction>(std::make_unique<ZeroDataType>(),i+1));
+    }
+    //pop the return value into the correct location is a return location was provided
+    if (returnValueTo != nullptr) {
+        instructions.emplace_back(std::make_unique<StackPopPartialInstruction>(std::move(returnValueTo),0));
+    } else {
+        instructions.emplace_back(std::make_unique<StackPopPartialInstruction>(std::make_unique<ZeroDataType>(),0));
     }
     return instructions;
 }

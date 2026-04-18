@@ -38,24 +38,19 @@ std::string FinishedInstruction::produce() {
 
 std::string StackModificationAccountingFinishedInstruction::produce() {
     std::string op1Val = op1;
-    std::cout << operation << std::endl;
-    std::cout << "o1 "<<op1Val<<" "<<op1Val.find_first_of("[sp+")<<std::endl;
     if (op1Val.find("[sp+") != std::string::npos) {
         size_t endInd = op1Val.find_first_of(']');
         std::string numVal = op1Val.substr(4,endInd+1-4);
         int spof = std::stoi(numVal);
-        std:: cout << "pmsvP1: "<<spof <<"  "<<stackOffset<<std::endl;
         spof +=stackOffset;
         op1Val = "[sp+"+std::to_string(spof)+"]";
 
     }
     std::string op2Val = op2;
-    std::cout << "o2 "<<op2Val<<" "<<op2Val.find_first_of("[sp+")<<std::endl;
     if (op2Val.find("[sp+") != std::string::npos) {
         size_t endInd = op2Val.find_first_of(']');
         std::string numVal = op2Val.substr(4,endInd+1-4);
         int spof = std::stoi(numVal);
-        std:: cout << "pmsvP2: "<<spof <<"  "<<stackOffset<<std::endl;
         spof +=stackOffset;
         op2Val = "[sp+"+std::to_string(spof)+"]";
 
@@ -156,7 +151,7 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
                 } else {
                     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister));
                 }
-                std::cout << registers[lruIndex].imValue << std::endl;
+                // std::cout << registers[lruIndex].imValue << std::endl;
                 if (registers[lruIndex].imValue >= localVars.size()) {
                     FinishedInstruction * endPtr = finishedInstructions.back().get();
                     partiallyResolvedStackVars.push_back(endPtr);//another microslop hallucinated error
@@ -643,6 +638,9 @@ void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<UserFuncti
     for (auto &fname:functionNames) {
         if (fname.name == this->name) {
             if (numberOfProvidedArgs == fname.numberOfParameters) {
+                if (!fname.returnsData && expectsReturnValue) {
+                    throw std::runtime_error("Function "+fname.name+" does not have a return value.");
+                }
                 return;
             } else {
                 throw std::runtime_error("Attempted to call function \""+fname.name+"\" with incorrect number of arguments, expected: "+std::to_string(fname.numberOfParameters)+" got: "+std::to_string(numberOfProvidedArgs) );
@@ -651,9 +649,9 @@ void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<UserFuncti
     }
     std::cerr << functionNames.size() << " functions were declared." << std::endl;
     for (auto &fname:functionNames) {
-        std::cerr << fname.name<< std::endl;
+        std::cerr << fname.name<<std::endl;
     }
-    throw std::runtime_error("Function not found: "+name);
+    throw std::runtime_error("Function not found: "+name+ " "+std::to_string(name.size()));
 }
 
 int trapCnt = 12;
@@ -682,7 +680,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPopPartialInstruction::as
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
-        op1Reg = resolver.resolve(val,finishedInstructions,false,existingStackOffset);
+        op1Reg = resolver.resolve(val,finishedInstructions,true,existingStackOffset);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }

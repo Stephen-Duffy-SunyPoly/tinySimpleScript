@@ -90,10 +90,20 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
     size_t parenthesisIndex = lineTrimmed.find('(');
     if (parenthesisIndex != string::npos) {
         //check for function def
-        size_t firstSpace = lineTrimmed.find_first_of(WHITESPACE);
-        string firstToken = lineTrimmed.substr(0,firstSpace);
-        firstToken = trim(firstToken);
-        if (firstToken == "function") {//its a funcitond def!
+        vector<string> tokens;
+        //tokenize the line
+        string trimmedCopy = lineTrimmed;
+        size_t firstSpace = trimmedCopy.find_first_of(WHITESPACE);
+        size_t nextSpace = firstSpace;
+        do {
+            tokens.push_back(trimmedCopy.substr(0,nextSpace));
+            trimmedCopy = trimmedCopy.substr(nextSpace+1);
+            trimmedCopy = trim(trimmedCopy);
+        } while ((nextSpace = trimmedCopy.find_first_of(WHITESPACE)) != string::npos);
+        if (!trimmedCopy.empty()) {
+            tokens.push_back(trimmedCopy);//add the final token
+        }
+        if (tokens[0] == "function") {//its a funcitond def!
             lineTrimmed = lineTrimmed.substr(firstSpace+1);//remove the word function from the start of the line
             parenthesisIndex = lineTrimmed.find('(');
             string functionName = lineTrimmed.substr(0,parenthesisIndex);
@@ -142,6 +152,29 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber,functions);
         } else {
             //its a function!!!!
+            //check for assignment funstions
+            if (tokens.size() > 2) {
+                if (tokens[1] == "=") {
+                    //assignment function
+                    size_t nameStart = lineTrimmed.find('=');
+                    string nameSearch = lineTrimmed.substr(nameStart+1);
+                    nameSearch = trim(nameSearch);
+                    parenthesisIndex = nameSearch.find('(');
+                    string functionName = nameSearch.substr(0,parenthesisIndex);
+                    string params = nameSearch.substr(parenthesisIndex+1);
+                    size_t closeParenthesisIndex = params.find(')');
+                    if (closeParenthesisIndex == string::npos) {
+                        throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
+                    }
+                    params = params.substr(0,closeParenthesisIndex);
+                    params = trim(params);
+                    //TODO built in return functions:
+
+
+                    return make_unique<CallUserFunctionHighLevelOperation>(functionName,params,tokens[0]);
+                }
+            }
+
             string functionName = lineTrimmed.substr(0,parenthesisIndex);
             functionName = trim(functionName);
             //get the parameters
@@ -156,7 +189,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 return expansionFunctions[functionName].create(params);
             } else {
                 //it might be a user defined function!
-                return make_unique<CallUserFunctionHighLevelOperation>(functionName,params);
+                return make_unique<CallUserFunctionHighLevelOperation>(functionName,params,"");
                 //do that here.
                 //for now tho:
                 // throw std::runtime_error("Function " + functionName + " not found");

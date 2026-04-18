@@ -118,8 +118,9 @@ public:
 class CallUserFunctionHighLevelOperation: public HighLevelConstruct {
     std::string name;
     std::vector<std::unique_ptr<DataType>> params;
+    std::unique_ptr<DataType> returnValueTo;
 public:
-    explicit CallUserFunctionHighLevelOperation(std::string  name, const std::string &rawParams);
+    explicit CallUserFunctionHighLevelOperation(std::string  name, const std::string &rawParams, const std::string &returnTo);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };

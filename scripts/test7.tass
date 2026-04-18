@@ -21,6 +21,9 @@ fw3v(lv2,lv1,g1)
 
 update()
 
+g2 = nice(g1)
+print(g2)
+
 trap()
 
 function argTest(arga, another){

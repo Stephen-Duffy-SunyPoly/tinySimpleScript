@@ -407,8 +407,9 @@ class FunctionCallPartialInstruction : public PartialInstruction {
     std::string name;
     std::unique_ptr<DataType> ignore;//its null just so there is a valid def for get variable
     int numberOfProvidedArgs;
+    bool expectsReturnValue;
 public:
-    FunctionCallPartialInstruction(std::string name, int numberOfProvidedArgs): name(std::move(name)), numberOfProvidedArgs(numberOfProvidedArgs) {}
+    FunctionCallPartialInstruction(std::string name, int numberOfProvidedArgs, bool expectsReturnValue): name(std::move(name)), numberOfProvidedArgs(numberOfProvidedArgs), expectsReturnValue(expectsReturnValue) {}
     std::string toString() override {
         return "function call to " + name;
     }
