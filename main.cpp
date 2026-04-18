@@ -42,7 +42,7 @@ string lcdConsts = "; LCD Peripherals\n"
 
 const vector<string> reservedWords = {//note to self, add other opperators to this list
     "PORT_A_DIR", "PORT_B_DIR", "PORT_A", "PORT_B","RAND","RAND_BITS","LIVESCREEN","UPDATESCREEN","X1","Y1","X2","Y2","STROKE","FILL","DRAWFILL","DRAWSTROKE",
-    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar", "=", "function"
+    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar","=", "function"
 };
 
 //the default mode of this lang is for the LCD system, the edison system, will be usable by a flag
@@ -76,7 +76,7 @@ vector<string> functions;
 
 vector<Register> registers;
 
-unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber) {
+unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber, vector<string> &localVars) {
     size_t commentStart = line.find("//");
     if (commentStart == string::npos) {
         commentStart = line.size();
@@ -194,6 +194,11 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                         throw std::runtime_error("Variable name " + tokens[1] + " already defined");
                     }
                 }
+                for (const auto& s: localVars) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
+                    }
+                }
                 //check if it is defined as a funcion
                 for (const auto& s: functions) {
                     if (s == tokens[1]) {
@@ -202,6 +207,57 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 }
                 //great not lets define it
                 globalVars.push_back(tokens[1]);
+                //check if there is more to this
+                if (tokens.size() > 2) {
+                    //add an assignment instruction
+                    if (tokens[2] != "=") {
+                        throw std::runtime_error("Syntax error. Expected = or nothing but got "+tokens[2]);
+                    }
+                    if (tokens.size() > 3) {
+                        return make_unique<VariableAssignment>(tokens[1], tokens[3]);
+                    } else {
+                        throw std::runtime_error("Syntax error. Expected assignment right hand side but got nothing");
+                    }
+                }
+            } else {
+                throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
+            }
+            return nullptr;
+        } else if (tokens[0] == "lvar") {//local varable
+            //token 1 will be the name of the var
+            if (tokens.size() > 1) {
+                if (charIsNumber(tokens[1][0])) {
+                    throw std::runtime_error("Variable can not start with numbers");
+                }
+                //check if it is a allready reserved word
+                for (const string &word:reservedWords) {
+                    if (word == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " not allowed");
+                    }
+                }
+                //check if it is the same name as a pre defined function
+                if (expansionFunctions.contains(tokens[1])) {
+                    throw std::runtime_error("Variable name " + tokens[1] + " not allowed");
+                }
+                //check if it is already defined
+                for (const auto& s: globalVars) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
+                    }
+                }
+                for (const auto& s: localVars) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
+                    }
+                }
+                //check if it is defined as a funcion
+                for (const auto& s: functions) {
+                    if (s == tokens[1]) {
+                        throw std::runtime_error("Variable name " + tokens[1] + " already defined");
+                    }
+                }
+                //great not lets define it
+                localVars.push_back(tokens[1]);
                 //check if there is more to this
                 if (tokens.size() > 2) {
                     //add an assignment instruction
@@ -315,6 +371,7 @@ int main(const int argc, char* argv[]) {
     }
 
     vector<unique_ptr<HighLevelConstruct>> highLevelBlocks;
+    vector<string> topLevelLocalVars;
 
     string line;
     int lineNumber = 0;
@@ -322,7 +379,7 @@ int main(const int argc, char* argv[]) {
     while (getline(fileIn, line)) {
         lineNumber++;
         try {
-            unique_ptr<HighLevelConstruct> block = parseFileLine(line,fileIn,lineNumber);
+            unique_ptr<HighLevelConstruct> block = parseFileLine(line,fileIn,lineNumber, topLevelLocalVars);
             if (block != nullptr) {//enure that a blank line was not just processed
                 highLevelBlocks.push_back(std::move(block));
             }
@@ -334,12 +391,15 @@ int main(const int argc, char* argv[]) {
 
     //Expansion
     vector<unique_ptr<PartialInstruction>> partialInstructions;
+    for (size_t i=0;i<topLevelLocalVars.size();i++) {
+        partialInstructions.emplace_back(make_unique<StackPushPartialInstruction>(make_unique<ZeroDataType>()));//make space on thst stack for the top level local vars
+    }
     //for each high level block
     for (auto &block : highLevelBlocks) {
         //get the expanded content
         vector<unique_ptr<PartialInstruction>> tmp = block->expand();
         for (auto &instruction : tmp) {
-            partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
+            partialInstructions.push_back(std::move(instruction));//add that content to the overall instruction list
         }
     }
 
@@ -368,7 +428,17 @@ int main(const int argc, char* argv[]) {
                         continue;
                     }
                     //check stack vars
-                    //TODO
+                    vector<string> scopedLocalVars = instruction->getLocalVarScope(i,topLevelLocalVars);
+                    for (size_t j=0;j<scopedLocalVars.size();j++) {
+                        if (scopedLocalVars[j] == var.getVarName()) {
+                            var.resolve(true,static_cast<int>(j));
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        continue;
+                    }
                     //didnt find it
                     throw std::runtime_error("Variable " + var.getVarName() + " not found");
                 }

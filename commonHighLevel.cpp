@@ -211,7 +211,7 @@ UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string name,
         if (lineTrimmed[0] == '}') {//if the line starts with the end of the function then assume it is the end of the function
             return;
         }
-        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed,file,lineNumber);
+        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed,file,lineNumber, localVars);
         if (block != nullptr) {//enure that a blank line was not just processed
             blocks.push_back(std::move(block));
         }
@@ -224,8 +224,11 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
     //need a unique type that can pass the function block info on to the next stage as well as expand each component
 
-    //get the pascal instructions for all the content of this function
+    //get the partial instructions for all the content of this function
     std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
+    for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
+        partialInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>()));
+    }
     //for each high level block
     for (auto &block : blocks) {
         //get the expanded content
@@ -234,7 +237,7 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
             partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
         }
     }
-    instructions. emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,""));
+    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars));
     return instructions;
 }
 

@@ -7,7 +7,7 @@ std::string VariableDataType::asAsm() {
     }
     // ReSharper disable once CppDFAUnreachableCode
     if (stackVar) {
-        return "[SP+"+std::to_string(offset)+"]";
+        return "[sp+"+std::to_string(offset)+"]";
     } else {
         return "["+varName+"]";
     }
@@ -46,11 +46,12 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
     }
     //look through the registers to see if the value is cached
     bool lookForVar = data->isVariable();
-    int imValue = 0;
+    int imValue = 0;//tha value of an immediate but also the offset for a stack var
     std::string varName;
     if (lookForVar) {
         VariableDataType &vdt = *dynamic_cast<VariableDataType*>(data.get());
         varName = vdt.getVarName();
+        imValue = vdt.getOffset();
     } else {
         if (wrightOp) {
             throw std::runtime_error("Attempted to preform a wright op on an immediate!");
@@ -88,8 +89,18 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
         outputRegister[1] += static_cast<char>(lruIndex); // NOLINT(*-narrowing-conversions)
         //if the reg is dirty then save the current value
         if (registers[lruIndex].dirty) {
-            //TODO check if it is a stack var, is fo then imValue is the offset
-            finishedInstructions.push_back({"str",2,"["+registers[lruIndex].varName+"]",outputRegister});
+            bool stack = false;
+            for (auto& var : localVars) {
+                if (var== registers[lruIndex].varName) {
+                    stack = true;
+                    break;
+                }
+            }
+            if (stack) {
+                finishedInstructions.push_back({"str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister});
+            } else {
+                finishedInstructions.push_back({"str",2,"["+registers[lruIndex].varName+"]",outputRegister});
+            }
         }
         //load the new value into the register
         const std::string loadCommand = lookForVar ? "lod": "set";
@@ -102,7 +113,7 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
         registers[lruIndex].immediate = !lookForVar;
         if (lookForVar) {
             registers[lruIndex].varName = varName;
-            registers[lruIndex].imValue = 0; //set stack offset here for local vars
+            registers[lruIndex].imValue = imValue; //set stack offset here for local vars
         } else {
             registers[lruIndex].varName = "";
             registers[lruIndex].imValue = imValue;
@@ -148,11 +159,20 @@ void RegisterResolver::flushGlobalVars(std::vector<FinishedInstruction> &finishe
         //TODO check this id a global var once we have a way to check that stuff
         if (!registers[i].varName.empty()){
             if (registers[i].dirty) {
-                std::string outputRegister = "rA";
-                outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-                finishedInstructions.push_back({"str",2,"["+registers[i].varName+"]",outputRegister});
-                //clear this reg
-                registers[i].dirty = false;
+                bool stack = false;
+                for (auto& var : localVars) {
+                    if (var== registers[i].varName) {
+                        stack = true;
+                        break;
+                    }
+                }
+                if (!stack) {
+                    std::string outputRegister = "rA";
+                    outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
+                    finishedInstructions.push_back({"str",2,"["+registers[i].varName+"]",outputRegister});
+                    //clear this reg
+                    registers[i].dirty = false;
+                }
             }
             //make this as an empty reg
             registers[i].varName = "";
@@ -411,9 +431,8 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
     for (int i=0;i<5;i++) {
         registers.emplace_back(i);
     }
-    std::vector<std::string> tmpStackVars;
     std::vector<FinishedInstruction> finalInstructions;
-    RegisterResolver blockResolver(registers,tmpStackVars);
+    RegisterResolver blockResolver(registers,localVariables);
     std::vector<FinishedInstruction> inProgressInstructions;
     //get the assembled form of all the content
     for (auto &instruction: internalInstructions) {
@@ -425,7 +444,7 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
     //add label
     finalInstructions.emplace_back(name,0,"","",true);
     //pre pend all the register and stack var prep
-    int stackSize = blockResolver.backupRegisters(finalInstructions);
+    blockResolver.backupRegisters(finalInstructions);
     //push stack varas here
     //add all the computed instructions
     for (auto &instruction: inProgressInstructions) {
@@ -437,6 +456,9 @@ std::vector<FinishedInstruction> BlockPartialInstruction::assemble(RegisterResol
 
     //add the stack cleanup
     //pop stack vars here
+    for (size_t i=0;i<localVariables.size();i++) {
+        finalInstructions.emplace_back("pop",1,"rz","",false);
+    }
     blockResolver.restoreRegisters(finalInstructions);
 
     //add final jump for return
@@ -453,6 +475,19 @@ void BlockPartialInstruction::validatFunctionCalls(std::vector<std::string> &fun
     for (const auto & ir:internalInstructions) {
         ir->validatFunctionCalls(functionNames);
     }
+}
+
+std::vector<std::string> BlockPartialInstruction::getLocalVarScope(int vn, std::vector<std::string> &outerVarNames) {
+    int rt =0;//running total
+    for (auto & inst:internalInstructions) {
+        int ni = inst->numVars();
+        if (rt+ni > vn) {//if adding this instructions vars to the total pust the one we want out of reach
+            return inst->getLocalVarScope(vn-rt,localVariables);//its in this one
+        }
+        rt += ni;
+    }
+
+    return PartialInstruction::getLocalVarScope(vn, outerVarNames);
 }
 
 std::vector<FinishedInstruction> FunctionCallPartialInstruction::assemble(RegisterResolver &resolver) {
@@ -476,5 +511,29 @@ std::vector<FinishedInstruction> TrapPartialInstruction::assemble(RegisterResolv
     std::vector<FinishedInstruction> finishedInstructions;
     finishedInstructions.emplace_back("stupidVerlyLongTrapLabel_2",0,"","",true);
     finishedInstructions.emplace_back("jmp",1,"!stupidVerlyLongTrapLabel_2","",false);
+    return finishedInstructions;
+}
+
+std::vector<FinishedInstruction> StackPushPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (val->isVariable()) {//if it is a variable the resolve it
+        op1Reg = resolver.resolve(val,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op1Reg = val->asAsm();
+    }
+    finishedInstructions.push_back({"psh",1,op1Reg,{}});
+    return finishedInstructions;
+}
+
+std::vector<FinishedInstruction> StackPopPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<FinishedInstruction> finishedInstructions;
+    std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (val->isVariable()) {//if it is a variable the resolve it
+        op1Reg = resolver.resolve(val,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op1Reg = val->asAsm();
+    }
+    finishedInstructions.push_back({"pop",1,op1Reg,{}});
     return finishedInstructions;
 }

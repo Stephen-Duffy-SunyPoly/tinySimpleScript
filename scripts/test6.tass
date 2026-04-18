@@ -1,0 +1,42 @@
+//this file is to test if local vars work correctly
+
+//this file test the user function system
+fill(1024)
+stroke(2048)
+
+gvar g1 = 10
+gvar g2 = 20
+lvar tba // test that top level lvars push something to the stack
+
+rect(g1,g1,g2,g2)
+
+
+main()
+update()
+stroke(1400)
+main()
+update()
+stroke(1300)
+main()
+update()
+stroke(1500)
+main()
+update()
+stroke(1200)
+main()
+
+update()
+
+trap()
+
+function main(){
+    lvar l1
+    lvar l2 = 8
+    l2 *= 8
+    print(l2)
+    l1 -= 8
+    line(g1,g1,l1,g2)
+    print(l1)
+    g1 ++
+    g2 --
+}

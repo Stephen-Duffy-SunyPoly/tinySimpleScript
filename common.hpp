@@ -82,6 +82,9 @@ public:
         return varName;
     }
     std::string asAsm() override;
+    int getOffset() {
+        return offset;
+    }
 };
 
 class ImmediateDataType : public DataType {
@@ -148,6 +151,9 @@ public:
     virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
     virtual std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) = 0;
     virtual void validatFunctionCalls(std::vector<std::string>& functionNames){};
+    virtual std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string>& outerVarNames) {
+        return outerVarNames;
+    }
 };
 
 //stores a value directly to a known symbol
@@ -361,13 +367,15 @@ class BlockPartialInstruction : public PartialInstruction {
     std::vector<std::unique_ptr<PartialInstruction>> internalInstructions;
     std::string name;
     std::string endJmp;
+    std::vector<std::string> localVariables;
 public:
-    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)) {}
+    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, std::vector<std::string> &localVars) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars) {}
     std::string toString() override;
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
     std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
     void validatFunctionCalls(std::vector<std::string> &functionNames) override;
+    std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string> &outerVarNames) override;
 };
 
 class FunctionCallPartialInstruction : public PartialInstruction {
@@ -403,6 +411,38 @@ public:
     }
 };
 
+class StackPushPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> val;
+public:
+    StackPushPartialInstruction(std::unique_ptr<DataType> val) : val(std::move(val)) {}
+    std::string toString() override {
+        return "push " + val->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return val;
+    }
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
+class StackPopPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> val;
+public:
+    StackPopPartialInstruction(std::unique_ptr<DataType> val) : val(std::move(val)) {}
+    std::string toString() override {
+        return "pop " + val->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return val;
+    }
+    std::vector<FinishedInstruction> assemble(RegisterResolver &resolver) override;
+};
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;
@@ -435,4 +475,4 @@ inline std::unique_ptr<DataType> parseDataType(const std::string& value) {
 }
 
 //defined in main
-std::unique_ptr<HighLevelConstruct> parseFileLine(const std::string& line, std::ifstream& file, int &lineNumber);
+std::unique_ptr<HighLevelConstruct> parseFileLine(const std::string& line, std::ifstream& file, int &lineNumber, std::vector<std::string> &localVars);
