@@ -477,9 +477,10 @@ int main(const int argc, char* argv[]) {
         assemblyOut << lcdConsts << endl<<endl;
     }
 
+    int globalVarOffset = static_cast<int>(finishedInstructions.size())*2;//sooooo apparently your code lives at 0 so we need to start the heap away from there, well just image each instruction is 2 words and go from there
     assemblyOut << "; global vars"<<endl;
     for (size_t i=0;i<globalVars.size();i++) {
-        assemblyOut << ".const " << globalVars[i] << "\t" << i << endl;
+        assemblyOut << ".const " << globalVars[i] << "\t" << i+globalVarOffset << endl;
     }
     assemblyOut << endl;
     for (auto &a: finishedInstructions) {
