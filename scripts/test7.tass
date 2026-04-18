@@ -6,10 +6,33 @@ stroke(2048)
 gvar g1 = 10
 gvar g2 = 20
 rect(g1,g1,g2,g2)
+lvar lv1 = g1
+lv1 += g2
+lvar lv2 = 40
+//ensure the register cache is flushed before calling argtest
+gvar flu1 = 2
+gvar flu2 = 2
+gvar flu3 = 2
+gvar flu4 = 2
+gvar flu5 = 2
+argTest(g1,lv1)
+
+fw3v(lv2,lv1,g1)
+
+update()
 
 trap()
 
 function argTest(arga, another){
     line(another,arga,g1,g2)
+    print(arga)
+    print(another)
     arga ++
+
+}
+
+function fw3v(a1, a2, a3){
+    print(a1)
+    print(a2)
+    print(a3)
 }

@@ -82,8 +82,8 @@ public:
         return varName;
     }
     std::string asAsm() override;
-    int getOffset() {
-        return offset;
+    [[nodiscard]] int getOffset() const {
+        return offset+1;
     }
 };
 
@@ -115,13 +115,32 @@ class ZeroDataType : public DataType {
     }
 };
 
+struct UserFunctionData {
+    std::string name;
+    int numberOfParameters;
+};
+
 struct FinishedInstruction {
+    virtual ~FinishedInstruction() = default;
+
     std::string operation;
     int operands;
     std::string op1;
     std::string op2;
-    bool label;
-    [[nodiscard]] std::string produce() const;
+    bool label = false;
+    virtual std::string produce();
+    FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)) {}
+    FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2, bool label): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)), label(label) {}
+};
+
+struct StackModificationAccountingFinishedInstruction: public FinishedInstruction {
+    int stackOffset;
+
+    StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, int stack_offset)
+        : FinishedInstruction(operation, operands, op1, op2),stackOffset(stack_offset) {}
+    StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, bool label, int stack_offset)
+        : FinishedInstruction(operation, operands, op1, op2, label),stackOffset(stack_offset) {}
+    std::string produce() override;
 };
 
 class RegisterResolver {
@@ -135,7 +154,7 @@ public:
     registers(registers), localVars(localVars), paramVars(std::move(paramVars)) {
         registersUsed.resize(registers.size());
     }
-    std::string resolve(std::unique_ptr<DataType>& data, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, bool wrightOp);
+    std::string resolve(std::unique_ptr<DataType>& data, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, bool wrightOp, int existingStackOffset =0);
     //call this after your done using this resolver
     int backupRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
     void restoreRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
@@ -153,7 +172,7 @@ public:
     virtual int numVars() = 0;
     virtual std::unique_ptr<DataType>& getVariable(int vn) = 0;
     virtual std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) = 0;
-    virtual void validatFunctionCalls(std::vector<std::string>& functionNames){};
+    virtual void validatFunctionCalls(std::vector<UserFunctionData>& functionNames){};
     virtual std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string>& outerVarNames) {
         return outerVarNames;
     }
@@ -378,15 +397,16 @@ public:
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
-    void validatFunctionCalls(std::vector<std::string> &functionNames) override;
+    void validatFunctionCalls(std::vector<UserFunctionData> &functionNames) override;
     std::vector<std::string> getLocalVarScope(int vn, std::vector<std::string> &outerVarNames) override;
 };
 
 class FunctionCallPartialInstruction : public PartialInstruction {
     std::string name;
     std::unique_ptr<DataType> ignore;//its null just so there is a valid def for get variable
+    int numberOfProvidedArgs;
 public:
-    FunctionCallPartialInstruction(std::string name): name(std::move(name)) {}
+    FunctionCallPartialInstruction(std::string name, int numberOfProvidedArgs): name(std::move(name)), numberOfProvidedArgs(numberOfProvidedArgs) {}
     std::string toString() override {
         return "function call to " + name;
     }
@@ -397,7 +417,7 @@ public:
         return ignore;
     }
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
-    void validatFunctionCalls(std::vector<std::string> &functionNames) override;
+    void validatFunctionCalls(std::vector<UserFunctionData> &functionNames) override;
 };
 
 class TrapPartialInstruction : public PartialInstruction {
@@ -417,8 +437,9 @@ public:
 
 class StackPushPartialInstruction : public PartialInstruction {
     std::unique_ptr<DataType> val;
+    int existingStackOffset;
 public:
-    StackPushPartialInstruction(std::unique_ptr<DataType> val) : val(std::move(val)) {}
+    StackPushPartialInstruction(std::unique_ptr<DataType> val,int existingStackOffset) : val(std::move(val)), existingStackOffset(existingStackOffset) {}
     std::string toString() override {
         return "push " + val->toString();
     }
@@ -433,8 +454,9 @@ public:
 
 class StackPopPartialInstruction : public PartialInstruction {
     std::unique_ptr<DataType> val;
+    int existingStackOffset;
 public:
-    StackPopPartialInstruction(std::unique_ptr<DataType> val) : val(std::move(val)) {}
+    StackPopPartialInstruction(std::unique_ptr<DataType> val, int existingStackOffset) : val(std::move(val)), existingStackOffset(existingStackOffset) {}
     std::string toString() override {
         return "pop " + val->toString();
     }

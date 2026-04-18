@@ -9,13 +9,14 @@ std::string VariableDataType::asAsm() {
     }
     // ReSharper disable once CppDFAUnreachableCode
     if (stackVar) {
-        return "[sp+"+std::to_string(offset)+"]";
+        //add 1 to the stack offset as the value of sp if the next stack value to be used not what we are refrencing
+        return "[sp+"+std::to_string(offset+1)+"]";
     } else {
         return "["+varName+"]";
     }
 }
 
-std::string FinishedInstruction::produce() const {
+std::string FinishedInstruction::produce() {
     std::string result;
     if (label) {
         result += "!" + operation;
@@ -35,8 +36,51 @@ std::string FinishedInstruction::produce() const {
     return result;
 }
 
-std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
-    std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions, bool wrightOp) {
+std::string StackModificationAccountingFinishedInstruction::produce() {
+    std::string op1Val = op1;
+    std::cout << operation << std::endl;
+    std::cout << "o1 "<<op1Val<<" "<<op1Val.find_first_of("[sp+")<<std::endl;
+    if (op1Val.find("[sp+") != std::string::npos) {
+        size_t endInd = op1Val.find_first_of(']');
+        std::string numVal = op1Val.substr(4,endInd+1-4);
+        int spof = std::stoi(numVal);
+        std:: cout << "pmsvP1: "<<spof <<"  "<<stackOffset<<std::endl;
+        spof +=stackOffset;
+        op1Val = "[sp+"+std::to_string(spof)+"]";
+
+    }
+    std::string op2Val = op2;
+    std::cout << "o2 "<<op2Val<<" "<<op2Val.find_first_of("[sp+")<<std::endl;
+    if (op2Val.find("[sp+") != std::string::npos) {
+        size_t endInd = op2Val.find_first_of(']');
+        std::string numVal = op2Val.substr(4,endInd+1-4);
+        int spof = std::stoi(numVal);
+        std:: cout << "pmsvP2: "<<spof <<"  "<<stackOffset<<std::endl;
+        spof +=stackOffset;
+        op2Val = "[sp+"+std::to_string(spof)+"]";
+
+    }
+
+    std::string result;
+    if (label) {
+        result += "!" + operation;
+    } else {
+        result = "\t";
+        result += operation;
+        if (operands > 0) {
+            result +=" ";
+            result += op1Val;
+            if (operands > 1) {
+                result += ", ";
+                result += op2Val;
+            }
+        }
+    }
+    //add comment here
+    return result;
+}
+
+std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions, bool wrightOp,int existingStackOffset) {
     //check what the data is
     if (!data->needsResolve()) {//if it does not need register caching,
         return data->asAsm();//just return what it is
@@ -107,9 +151,13 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
                 }
             }
             if (stack) {
-                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister));
-                std::cout << registers[imValue].imValue << std::endl;
-                if (registers[imValue].imValue >= localVars.size()) {
+                if (existingStackOffset != 0) {
+                    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,existingStackOffset));
+                } else {
+                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister));
+                }
+                std::cout << registers[lruIndex].imValue << std::endl;
+                if (registers[lruIndex].imValue >= localVars.size()) {
                     FinishedInstruction * endPtr = finishedInstructions.back().get();
                     partiallyResolvedStackVars.push_back(endPtr);//another microslop hallucinated error
                 }
@@ -119,7 +167,11 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data,
         }
         //load the new value into the register
         const std::string loadCommand = lookForVar ? "lod": "set";
-        finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,outputRegister,data->asAsm()));
+        if (existingStackOffset !=0) {
+            finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>(loadCommand,2,outputRegister,data->asAsm(),existingStackOffset));
+        } else {
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,outputRegister,data->asAsm()));
+        }
         //check if it is extra stack and store the index for later correction
         if (lookForVar) {
             for (auto& var : paramVars) {
@@ -163,7 +215,7 @@ int RegisterResolver::backupRegisters(std::vector<std::unique_ptr<FinishedInstru
         if (registersUsed[i]) {//this register has been used, back it up!
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,regName));
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,regName,""));
             uregCnt++;
         }
     }
@@ -175,7 +227,7 @@ void RegisterResolver::restoreRegisters(std::vector<std::unique_ptr<FinishedInst
         if (registersUsed[i]) {
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,regName));
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,regName,""));
         }
     }
 }
@@ -219,21 +271,21 @@ void RegisterResolver::correctExtraStackVars(int numRegsUsed, std::vector<std::u
     //what is this has not elements
     for (auto instruction: partiallyResolvedStackVars) {
         std::string op1Val = instruction->op1;
-        if (op1Val.find_first_of("[sp+") != std::string::npos) {
+        if (op1Val.find("[sp+") != std::string::npos) {
             size_t endInd = op1Val.find_first_of(']');
             std::string numVal = op1Val.substr(4,endInd+1-4);
             int spof = std::stoi(numVal);
-            if (spof >= localVars.size()) {
+            if (spof >= localVars.size()+1) {//+1 account for the fact that the stack pointer points to the next bit of memory that will be used
                 spof +=offsetBy;
                 instruction->op1 = "[sp+"+std::to_string(spof)+"]";
             }
         }
         std::string op2Val = instruction->op2;
-        if (op2Val.find_first_of("[sp+") != std::string::npos) {
+        if (op2Val.find("[sp+") != std::string::npos) {//+1 account for the fact that the stack pointer points to the next bit of memory that will be used
             size_t endInd = op2Val.find_first_of(']');
             std::string numVal = op2Val.substr(4,endInd+1-4);
             int spof = std::stoi(numVal);
-            if (spof >= localVars.size()) {
+            if (spof >= localVars.size()+1) {
                 spof +=offsetBy;
                 instruction->op2 = "[sp+"+std::to_string(spof)+"]";
             }
@@ -533,7 +585,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     return finalInstructions;
 }
 
-void BlockPartialInstruction::validatFunctionCalls(std::vector<std::string> &functionNames) {
+void BlockPartialInstruction::validatFunctionCalls(std::vector<UserFunctionData> &functionNames) {
     for (const auto & ir:internalInstructions) {
         ir->validatFunctionCalls(functionNames);
     }
@@ -564,11 +616,19 @@ std::vector<std::unique_ptr<FinishedInstruction>> FunctionCallPartialInstruction
     return finishedInstructions;
 }
 
-void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<std::string> &functionNames) {
+void FunctionCallPartialInstruction::validatFunctionCalls(std::vector<UserFunctionData> &functionNames) {
     for (auto &fname:functionNames) {
-        if (fname == this->name) {
-            return;
+        if (fname.name == this->name) {
+            if (numberOfProvidedArgs == fname.numberOfParameters) {
+                return;
+            } else {
+                throw std::runtime_error("Attempted to call function \""+fname.name+"\" with incorrect number of arguments, expected: "+std::to_string(fname.numberOfParameters)+" got: "+std::to_string(numberOfProvidedArgs) );
+            }
         }
+    }
+    std::cerr << functionNames.size() << " functions were declared." << std::endl;
+    for (auto &fname:functionNames) {
+        std::cerr << fname.name<< std::endl;
     }
     throw std::runtime_error("Function not found: "+name);
 }
@@ -587,11 +647,11 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPushPartialInstruction::a
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
-        op1Reg = resolver.resolve(val,finishedInstructions,false);
+        op1Reg = resolver.resolve(val,finishedInstructions,false,existingStackOffset);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,op1Reg,""));
+    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("psh",1,op1Reg,"",existingStackOffset));
     return finishedInstructions;
 }
 
@@ -599,10 +659,10 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPopPartialInstruction::as
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
-        op1Reg = resolver.resolve(val,finishedInstructions,false);
+        op1Reg = resolver.resolve(val,finishedInstructions,false,existingStackOffset);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,op1Reg,""));
+    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("pop",1,op1Reg,"",existingStackOffset));
     return finishedInstructions;
 }

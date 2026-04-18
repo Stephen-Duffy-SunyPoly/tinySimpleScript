@@ -72,7 +72,7 @@ struct HighLevelDescription {
 unordered_map<string, HighLevelDescription> expansionFunctions;
 
 vector<string> globalVars;
-vector<string> functions;
+vector<UserFunctionData> functions;
 
 vector<Register> registers;
 
@@ -98,6 +98,9 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             parenthesisIndex = lineTrimmed.find('(');
             string functionName = lineTrimmed.substr(0,parenthesisIndex);
             functionName = trim(functionName);
+            if (functionName.empty()) {
+                throw std::runtime_error("Empty funcion names not allowed");
+            }
             //validate the name
             if (charIsNumber(functionName[0])) {
                 throw std::runtime_error("Variable can not start with numbers");
@@ -120,7 +123,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             }
             //check if a function with this name already exists
             for (const auto& s: functions) {
-                if (s == functionName) {
+                if (s.name == functionName) {
                     throw std::runtime_error("Function name " + functionName + " already defined");
                 }
             }
@@ -135,8 +138,8 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 throw std::runtime_error("Syntax Error, Function opening expected '{' after ')");
             }
             params = params.substr(0,closeParenthesisIndex);
-            functions.push_back(functionName);
-            return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber);
+            // functions.push_back(functionName);
+            return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber,functions);
         } else {
             //its a function!!!!
             string functionName = lineTrimmed.substr(0,parenthesisIndex);
@@ -153,7 +156,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 return expansionFunctions[functionName].create(params);
             } else {
                 //it might be a user defined function!
-                return make_unique<CallUserFunctionHighLevelOperation>(functionName);
+                return make_unique<CallUserFunctionHighLevelOperation>(functionName,params);
                 //do that here.
                 //for now tho:
                 // throw std::runtime_error("Function " + functionName + " not found");
@@ -202,7 +205,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 }
                 //check if it is defined as a funcion
                 for (const auto& s: functions) {
-                    if (s == tokens[1]) {
+                    if (s.name == tokens[1]) {
                         throw std::runtime_error("Variable name " + tokens[1] + " already defined");
                     }
                 }
@@ -253,7 +256,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 }
                 //check if it is defined as a funcion
                 for (const auto& s: functions) {
-                    if (s == tokens[1]) {
+                    if (s.name == tokens[1]) {
                         throw std::runtime_error("Variable name " + tokens[1] + " already defined");
                     }
                 }
@@ -393,7 +396,7 @@ int main(const int argc, char* argv[]) {
     //Expansion
     vector<unique_ptr<PartialInstruction>> partialInstructions;
     for (size_t i=0;i<topLevelLocalVars.size();i++) {
-        partialInstructions.emplace_back(make_unique<StackPushPartialInstruction>(make_unique<ZeroDataType>()));//make space on thst stack for the top level local vars
+        partialInstructions.emplace_back(make_unique<StackPushPartialInstruction>(make_unique<ZeroDataType>(),0));//make space on thst stack for the top level local vars
     }
     //for each high level block
     for (auto &block : highLevelBlocks) {
@@ -407,7 +410,6 @@ int main(const int argc, char* argv[]) {
     //variable assignment
     //TODO
     //loop through everything and pull out the variable declarations  and make them proper memory addresses
-
     //check all instructions to make sure all of their variables actually exist / resolve them
     try {
         for (auto &instruction : partialInstructions) {
@@ -416,6 +418,9 @@ int main(const int argc, char* argv[]) {
                 unique_ptr<DataType> &dataInput = instruction->getVariable(i);
                 if (dataInput != nullptr && dataInput->isVariable()) {
                     VariableDataType &var = dynamic_cast<VariableDataType&>(*dataInput);
+                    if (var.getVarName().empty()) {
+                        throw std::runtime_error("Attempted to resolve variable with empty name "+instruction->toString());
+                    }
                     //check if it is a global var:
                     bool found = false;
                     for (size_t j=0;j<globalVars.size();j++) {
@@ -446,7 +451,7 @@ int main(const int argc, char* argv[]) {
             }
         }
     } catch (exception& e) {
-        cerr << "Error while resolving variables: "<<e.what() << endl;
+        cerr << "Error while resolving variables / functions: "<<e.what() << endl;
         return EXIT_FAILURE;
     }
 

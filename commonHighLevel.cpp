@@ -203,7 +203,7 @@ std::string DecrementHighLevelOperation::toString() {
     return var->toString() +" --";
 }
 
-UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string name, const std::string &params, std::ifstream &file, int& lineNumber) : name(std::move(name)){
+UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &functionName, const std::string &params, std::ifstream &file, int& lineNumber, std::vector<UserFunctionData>& functionData) : name(std::move(functionName)){
     //parsing args here
     std::string localParams = params;
     size_t camaPos = localParams.find(',');
@@ -214,7 +214,11 @@ UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string name,
         localParams = localParams.substr(camaPos+1);
         camaPos = localParams.find(',');
     }
-    paramaters.push_back(trim(localParams));
+    localParams = trim(localParams);
+    if (!localParams.empty()) {
+        paramaters.push_back(localParams);
+    }
+    functionData.emplace_back(name,static_cast<int>(paramaters.size()));
 
     std::string functionLine;
     while (std::getline(file, functionLine)) {
@@ -239,7 +243,7 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
     //get the partial instructions for all the content of this function
     std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
     for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
-        partialInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>()));
+        partialInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
     }
     //for each high level block
     for (auto &block : blocks) {
@@ -262,10 +266,37 @@ std::string UserFunctionHighLevelOperation::toString() {
     return ss.str();
 }
 
+CallUserFunctionHighLevelOperation::CallUserFunctionHighLevelOperation(std::string name, const std::string &rawParams): name(std::move(name)) {
+    std::string localParams = rawParams;
+    size_t camaPos = localParams.find(',');
+    while (camaPos != std::string::npos) {
+        std::string param = localParams.substr(0,camaPos);
+        param = trim(param);
+        params.push_back(parseDataType(param));
+        localParams = localParams.substr(camaPos+1);
+        camaPos = localParams.find(',');
+    }
+    localParams = trim(localParams);
+    if (!localParams.empty()) {
+        params.push_back(parseDataType(localParams));
+    }
+}
+
 std::vector<std::unique_ptr<PartialInstruction>> CallUserFunctionHighLevelOperation::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    //TODO params
-    instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name)));
+    //push all params onto the stack
+    //int the future remeber to account for return value!
+    for (size_t i=0;i<params.size();i++) {
+        //here i is also representing how much offset the stack currently has
+        //the index af the actual param needs to be backwards tho
+        size_t paramIndex = params.size()-i-1;
+        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::move(params[paramIndex]),static_cast<int>(i)));
+    }
+    instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name),static_cast<int>(params.size())));
+    for (int i = static_cast<int>(params.size())-1; i >= 0; i--) {
+        //pop the params into rz as we no longer care about them
+        instructions.emplace_back(std::make_unique<StackPopPartialInstruction>(std::make_unique<ZeroDataType>(),static_cast<int>(i)));
+    }
     return instructions;
 }
 

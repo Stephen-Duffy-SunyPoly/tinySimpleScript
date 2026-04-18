@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <utility>
 #include "common.hpp"
 
 
@@ -106,18 +107,17 @@ class UserFunctionHighLevelOperation: public HighLevelConstruct {
     std::string name;
     std::vector<std::string> localVars;
     std::vector<std::string> paramaters;
-    //TODO args
 public:
-    explicit UserFunctionHighLevelOperation(std::string  name, const std::string &params,std::ifstream& file, int & lineNumber);
+    explicit UserFunctionHighLevelOperation(std::string  &name, const std::string &params,std::ifstream& file, int & lineNumber, std::vector<UserFunctionData>& functionData);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
 
 class CallUserFunctionHighLevelOperation: public HighLevelConstruct {
     std::string name;
-    std::vector<std::unique_ptr<DataType>> params;//TODO
+    std::vector<std::unique_ptr<DataType>> params;
 public:
-    explicit CallUserFunctionHighLevelOperation([[maybe_unused]] const std::string& name): name(name) {}
+    explicit CallUserFunctionHighLevelOperation(std::string  name, const std::string &rawParams);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
