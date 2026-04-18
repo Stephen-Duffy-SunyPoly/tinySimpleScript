@@ -36,3 +36,9 @@ function fw3v(a1, a2, a3){
     print(a2)
     print(a3)
 }
+
+function nice(av1){
+    lvar ready = 8
+    ready += av1
+    return ready
+}

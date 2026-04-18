@@ -118,6 +118,7 @@ class ZeroDataType : public DataType {
 struct UserFunctionData {
     std::string name;
     int numberOfParameters;
+    bool returnsData;
 };
 
 struct FinishedInstruction {
@@ -391,8 +392,9 @@ class BlockPartialInstruction : public PartialInstruction {
     std::string endJmp;
     std::vector<std::string> localVariables;
     std::vector<std::string> paramVars;
+    std::unique_ptr<DataType> returnValue;
 public:
-    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, const std::vector<std::string> &localVars, std::vector<std::string> paramVars) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars), paramVars(std::move(paramVars)) {}
+    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, const std::vector<std::string> &localVars, std::vector<std::string> paramVars, std::unique_ptr<DataType> returnData) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars), paramVars(std::move(paramVars)), returnValue(std::move(returnData)) {}
     std::string toString() override;
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
@@ -501,4 +503,4 @@ inline std::unique_ptr<DataType> parseDataType(const std::string& value) {
 }
 
 //defined in main
-std::unique_ptr<HighLevelConstruct> parseFileLine(const std::string& line, std::ifstream& file, int &lineNumber, std::vector<std::string> &localVars);
+std::unique_ptr<HighLevelConstruct> parseFileLine(const std::string& line, std::ifstream& file, int &lineNumber, std::vector<std::string> &localVars, bool returnAllowed);

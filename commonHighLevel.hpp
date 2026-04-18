@@ -107,6 +107,8 @@ class UserFunctionHighLevelOperation: public HighLevelConstruct {
     std::string name;
     std::vector<std::string> localVars;
     std::vector<std::string> paramaters;
+    bool returnsValue;
+    std::unique_ptr<DataType> returnValue;
 public:
     explicit UserFunctionHighLevelOperation(std::string  &name, const std::string &params,std::ifstream& file, int & lineNumber, std::vector<UserFunctionData>& functionData);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
@@ -125,6 +127,14 @@ public:
 class TrapHighLevelOperation: public HighLevelConstruct {
 public:
     explicit TrapHighLevelOperation([[maybe_unused]] const std::string& line){}
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReturnHighLevelOperation: public HighLevelConstruct {
+public:
+    std::unique_ptr<DataType> value;
+    explicit ReturnHighLevelOperation(const std::string &value);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };

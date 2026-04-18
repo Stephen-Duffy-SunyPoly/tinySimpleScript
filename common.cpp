@@ -522,6 +522,9 @@ int BlockPartialInstruction::numVars() {
     for (auto & inst:internalInstructions) {
         total += inst->numVars();
     }
+    if (returnValue != nullptr) {
+        total ++;
+    }
     return total;
 }
 
@@ -534,6 +537,9 @@ std::unique_ptr<DataType> & BlockPartialInstruction::getVariable(int vn) {
         }
         rt += ni;
     }
+    if (returnValue != nullptr && rt == vn) {
+        return returnValue;
+    }
     return internalInstructions[0]->getVariable(0);//fail safe
 }
 
@@ -545,12 +551,17 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     std::vector<std::unique_ptr<FinishedInstruction>> finalInstructions;
     RegisterResolver blockResolver(registers,localVariables,paramVars);
     std::vector<std::unique_ptr<FinishedInstruction>> inProgressInstructions;
+    std::string returnValueReg;
+    bool returningValue = returnValue != nullptr;
     //get the assembled form of all the content
     for (auto &instruction: internalInstructions) {
         std::vector<std::unique_ptr<FinishedInstruction>> tmp = instruction->assemble(blockResolver);
         for (auto &instInfo : tmp) {
             inProgressInstructions.push_back(std::move(instInfo));
         }
+    }
+    if (returningValue) {
+        returnValueReg = blockResolver.resolve(returnValue,inProgressInstructions,false);
     }
     //add label
     finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
@@ -559,10 +570,19 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
 
     //account for params stack offset
     blockResolver.correctExtraStackVars(numRegistersUsed,inProgressInstructions);
-    //push stack varas here
+    //stack var are already pushed at this point by the system in the level above this
+
     //add all the computed instructions
     for (auto &instruction: inProgressInstructions) {
         finalInstructions.push_back(std::move(instruction));
+    }
+
+    //store the return value
+    if (returningValue) {
+        //calculate the location of the return value on the stack
+        //1 return address + 1 offset from the stack pointer + number of local variables + numbers of parameters + number of registers used
+        int returnStackPos = static_cast<int>(2 + localVariables.size() + paramVars.size() + numRegistersUsed);
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(returnStackPos)+"]",returnValueReg,false));
     }
 
     //flush changed global vars
@@ -603,6 +623,9 @@ std::vector<std::string> BlockPartialInstruction::getLocalVarScope(int vn, std::
             return inst->getLocalVarScope(vn-rt,localVarsAndParams);//its in this one
         }
         rt += ni;
+    }
+    if (returnValue != nullptr && rt == vn) {//the variable used int eh return statement
+        return localVarsAndParams;
     }
 
     return PartialInstruction::getLocalVarScope(vn, outerVarNames);

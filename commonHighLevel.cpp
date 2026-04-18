@@ -203,32 +203,57 @@ std::string DecrementHighLevelOperation::toString() {
     return var->toString() +" --";
 }
 
-UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &functionName, const std::string &params, std::ifstream &file, int& lineNumber, std::vector<UserFunctionData>& functionData) : name(std::move(functionName)){
+UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &functionName, const std::string &params, std::ifstream &file, int& lineNumber, std::vector<UserFunctionData>& functionData) : name(
+    std::move(functionName)), returnsValue(false) {
+    bool returnEndounmtered=false;
     //parsing args here
     std::string localParams = params;
     size_t camaPos = localParams.find(',');
     while (camaPos != std::string::npos) {
-        std::string param = localParams.substr(0,camaPos);
+        std::string param = localParams.substr(0, camaPos);
         param = trim(param);
         paramaters.push_back(param);
-        localParams = localParams.substr(camaPos+1);
+        localParams = localParams.substr(camaPos + 1);
         camaPos = localParams.find(',');
     }
     localParams = trim(localParams);
     if (!localParams.empty()) {
         paramaters.push_back(localParams);
     }
-    functionData.emplace_back(name,static_cast<int>(paramaters.size()));
+    functionData.emplace_back(name, static_cast<int>(paramaters.size()));
 
     std::string functionLine;
     while (std::getline(file, functionLine)) {
         lineNumber++;
         std::string lineTrimmed = trim(functionLine);
-        if (lineTrimmed[0] == '}') {//if the line starts with the end of the function then assume it is the end of the function
+        if (lineTrimmed[0] == '}') {
+            //if the line starts with the end of the function then assume it is the end of the function
             return;
         }
-        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed,file,lineNumber, localVars);
-        if (block != nullptr) {//enure that a blank line was not just processed
+        if (returnsValue) {//return must be the last statment in a funcion
+            size_t commentStart = lineTrimmed.find("//");
+            if (commentStart == std::string::npos) {
+                commentStart = lineTrimmed.size();
+            }
+            //strip any comments to make sure this line is a blank
+            std::string noComments = lineTrimmed.substr(0, commentStart);
+            noComments = trim(noComments);
+            if (!noComments.empty()) {
+                throw std::runtime_error("Return must be the last statment of a funcion and can not be inside another block");
+            }
+        }
+        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed, file, lineNumber, localVars, !returnEndounmtered);
+        if (lineTrimmed.starts_with("return")) {//if the line is a return statement
+            returnEndounmtered = true;
+            if (block != nullptr) {//if you return nothing then no contstucts will be genrated
+                returnsValue = true;
+                auto* rho = dynamic_cast<ReturnHighLevelOperation*>(block.get());
+                returnValue = std::move(rho->value);
+                continue;//do not add this to the list of internal blocks, return values can not be expanded they should be handled here
+            }
+        }
+        if (block != nullptr) {
+            //enure that a blank line was not just processed
             blocks.push_back(std::move(block));
         }
     }
@@ -250,10 +275,14 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
         //get the expanded content
         std::vector<std::unique_ptr<PartialInstruction>> tmp = block->expand();
         for (auto &instruction : tmp) {
-            partialInstructions.push_back(std::move(instruction));//add that content to the overall instrution list
+            partialInstructions.push_back(std::move(instruction));//add that content to the overall instruction list
         }
     }
-    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters));
+    if (returnsValue) {
+        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, std::move(returnValue)));
+    } else {
+        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, nullptr));
+    }
     return instructions;
 }
 
@@ -312,4 +341,16 @@ std::vector<std::unique_ptr<PartialInstruction>> TrapHighLevelOperation::expand(
 
 std::string TrapHighLevelOperation::toString() {
     return "trap";
+}
+
+ReturnHighLevelOperation::ReturnHighLevelOperation(const std::string &value) {
+    this->value = parseDataType(value);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReturnHighLevelOperation::expand() {
+    throw std::runtime_error("Return statements can not be expanded. They must ba handled by the wrapping function");
+}
+
+std::string ReturnHighLevelOperation::toString() {
+    return "return "+value->toString();
 }

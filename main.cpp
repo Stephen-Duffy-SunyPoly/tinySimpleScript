@@ -76,7 +76,7 @@ vector<UserFunctionData> functions;
 
 vector<Register> registers;
 
-unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber, vector<string> &localVars) {
+unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber, vector<string> &localVars, bool returnAllowed) {
     size_t commentStart = line.find("//");
     if (commentStart == string::npos) {
         commentStart = line.size();
@@ -227,7 +227,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
             }
             return nullptr;
-        } else if (tokens[0] == "lvar") {//local varable
+        } else if (tokens[0] == "lvar") {//local variable
             //token 1 will be the name of the var
             if (tokens.size() > 1) {
                 if (charIsNumber(tokens[1][0])) {
@@ -278,6 +278,17 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
             }
             return nullptr;
+        } else if (tokens[0] == "return") {
+            if (!returnAllowed) {
+                throw std::runtime_error("Return not allowed here! Return must be the last statment of a funcion and can not be inside another block");
+            }
+            if (tokens.size() == 1) {
+                return nullptr;//just a void return no need to return anything
+            }
+            if (tokens.size() >2) {
+                throw std::runtime_error("Syntax error. return expects at most 1 parameter");
+            }
+            return make_unique<ReturnHighLevelOperation>(tokens[1]);
         }
         //end of first token significance
         if (tokens.size() == 1) {
@@ -383,7 +394,7 @@ int main(const int argc, char* argv[]) {
     while (getline(fileIn, line)) {
         lineNumber++;
         try {
-            unique_ptr<HighLevelConstruct> block = parseFileLine(line,fileIn,lineNumber, topLevelLocalVars);
+            unique_ptr<HighLevelConstruct> block = parseFileLine(line,fileIn,lineNumber, topLevelLocalVars, false);
             if (block != nullptr) {//enure that a blank line was not just processed
                 highLevelBlocks.push_back(std::move(block));
             }
@@ -465,11 +476,16 @@ int main(const int argc, char* argv[]) {
     RegisterResolver mainResolver(registers, topLevelLocalVars,{});//each stack section gets its own resolver
 
     vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
-    for (auto &instruction: partialInstructions) {
-        vector<std::unique_ptr<FinishedInstruction>> tmp = instruction->assemble(mainResolver);
-        for (auto &instInfo : tmp) {
-            finishedInstructions.push_back(std::move(instInfo));
+    try {
+        for (auto &instruction: partialInstructions) {
+            vector<std::unique_ptr<FinishedInstruction>> tmp = instruction->assemble(mainResolver);
+            for (auto &instInfo : tmp) {
+                finishedInstructions.push_back(std::move(instInfo));
+            }
         }
+    }catch (exception& e) {
+        cerr << "Error while assembling instructions : "<<e.what() << endl;
+        return EXIT_FAILURE;
     }
 
     filesystem::path inFilePath(args[0]);
