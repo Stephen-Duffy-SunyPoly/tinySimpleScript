@@ -42,7 +42,7 @@ string lcdConsts = "; LCD Peripherals\n"
 
 const vector<string> reservedWords = {//note to self, add other opperators to this list
     "PORT_A_DIR", "PORT_B_DIR", "PORT_A", "PORT_B","RAND","RAND_BITS","LIVESCREEN","UPDATESCREEN","X1","Y1","X2","Y2","STROKE","FILL","DRAWFILL","DRAWSTROKE",
-    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar","=", "function"
+    "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar","=", "function", "do", "while", "if", "else", "return"
 };
 
 //the default mode of this lang is for the LCD system, the edison system, will be usable by a flag
@@ -434,6 +434,7 @@ int main(const int argc, char* argv[]) {
     }
 
     expansionFunctions.insert({"trap",{[](const string &line) {return make_unique<TrapHighLevelOperation>(line);}}});
+    expansionFunctions.insert({"delay",{[](const string &line) {return make_unique<DelayFunction>(line);}}});
 
     //load the langue constructs:
     if (LCDSystem) {

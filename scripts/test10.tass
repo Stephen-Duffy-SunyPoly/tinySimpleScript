@@ -1,0 +1,17 @@
+//this file is to test additional built in functions
+
+gvar left = 10
+gvar right = 20
+
+do {
+    left += 2
+    right += 2
+    stroke(600)
+    fill(600)
+    clear()
+    fill(1300)
+    stroke(1300)
+    rect(left,20,right,50)
+    update()
+    delay(10000)
+} while (0 == 0)

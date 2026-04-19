@@ -569,6 +569,22 @@ public:
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
+class DelayPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> data;
+public:
+    DelayPartialInstruction(std::unique_ptr<DataType> data) : data(std::move(data)) {}
+    std::string toString() override {
+        return "delay " + data->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return data;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;

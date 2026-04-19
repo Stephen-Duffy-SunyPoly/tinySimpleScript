@@ -873,3 +873,15 @@ std::vector<std::unique_ptr<FinishedInstruction>> JumpConditionPartialInstructio
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(jumpType,1,"!"+jumpTo,"",false));
     return finishedInstructions;
 }
+
+std::vector<std::unique_ptr<FinishedInstruction>> DelayPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    std::string op1Reg;
+    if (data->isVariable()) {
+        op1Reg = resolver.resolve(data,finishedInstructions,false,0);
+    } else {
+        op1Reg = data->asAsm();
+    }
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("dly",1,op1Reg,"",false));
+    return finishedInstructions;
+}

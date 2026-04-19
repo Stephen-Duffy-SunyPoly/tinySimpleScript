@@ -166,3 +166,11 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class DelayFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> amount;
+public:
+    explicit DelayFunction([[maybe_unused]] const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

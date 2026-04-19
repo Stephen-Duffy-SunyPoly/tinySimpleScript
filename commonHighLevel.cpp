@@ -614,3 +614,28 @@ std::vector<std::unique_ptr<PartialInstruction>> IfHighLevelOperation::expand() 
 std::string IfHighLevelOperation::toString() {
     return "If";
 }
+
+DelayFunction::DelayFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type delay. Empty parameter!");
+    }
+
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function delay. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function delay. Missing param 1");
+    }
+    amount = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> DelayFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DelayPartialInstruction>(std::move(amount)));
+    return instructions;
+}
+
+std::string DelayFunction::toString() {
+    return "delay "+amount->toString();
+}
