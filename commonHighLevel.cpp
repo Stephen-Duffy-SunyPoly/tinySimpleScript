@@ -269,7 +269,7 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
     //get the partial instructions for all the content of this function
     std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
     for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
-        partialInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+        partialInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0,"push space for "+localVars[localVars.size()-1-i]+" onto the stack"));
     }
     //for each high level block
     for (auto &block : blocks) {
@@ -319,13 +319,13 @@ std::vector<std::unique_ptr<PartialInstruction>> CallUserFunctionHighLevelOperat
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
     //push all params onto the stack
 
-    instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+    instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0,"push space for the return value onto the stack"));
 
     for (size_t i=0;i<params.size();i++) {
         //here i is also representing how much offset the stack currently has
         //the index af the actual param needs to be backwards tho
         size_t paramIndex = params.size()-i-1;
-        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::move(params[paramIndex]),static_cast<int>(i+1)));//add 1 for the return value regardless of if it gets used
+        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::move(params[paramIndex]),static_cast<int>(i+1),"push "+params[paramIndex]->toString()+" onto the stack as a parmater"));//add 1 for the return value regardless of if it gets used
     }
 
     instructions.emplace_back(std::make_unique<FunctionCallPartialInstruction>(std::move(name),static_cast<int>(params.size()),returnValueTo != nullptr));
@@ -448,9 +448,11 @@ std::vector<std::unique_ptr<PartialInstruction>> LoopHighLevelOperation::expand(
 
     //get the partial instructions for all the content of this function
     std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
-    for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
-        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
-    }
+    //this is handled in the bloc instruction now!
+    // for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
+    //     //this needs to be inside the loop but before the label
+    //     instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0, "push space for "+localVars[localVars.size()-1-i]+" onto the stack"));
+    // }
     //for each high level block
     for (auto &block : blocks) {
         //get the expanded content
@@ -577,8 +579,8 @@ std::vector<std::unique_ptr<PartialInstruction>> IfHighLevelOperation::expand() 
     instructions.emplace_back(std::make_unique<JumpConditionPartialInstruction>(std::move(check1),std::move(check2),condition,elseLabel));
 
     //<inside true block> push local vars
-    for (auto &_: trueLocalVars) {
-        trueInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+    for (size_t i=0;i<trueLocalVars.size();i++) {
+        trueInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0, "push space for "+trueLocalVars[trueLocalVars.size()-1-i]+" onto the stack"));
     }
     for (auto &thing: trueBlocks) {
         std::vector<std::unique_ptr<PartialInstruction>> tmp = thing->expand();
@@ -591,8 +593,8 @@ std::vector<std::unique_ptr<PartialInstruction>> IfHighLevelOperation::expand() 
 
     if (!falseBlocks.empty()) {
         //<optional> false block
-        for (auto &tv: falseLocalVars) {
-            falseInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+        for (size_t i=0;i<falseLocalVars.size();i++) {
+            falseInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0,"push space for "+falseLocalVars[falseLocalVars.size()-1-i]+" onto the stack"));
         }
 
         //<inside false block> push false local vars
@@ -638,4 +640,168 @@ std::vector<std::unique_ptr<PartialInstruction>> DelayFunction::expand() {
 
 std::string DelayFunction::toString() {
     return "delay "+amount->toString();
+}
+
+RandFunction::RandFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type random. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> RandFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"RAND"));
+    return instructions;
+}
+
+std::string RandFunction::toString() {
+    return "Random";
+}
+
+RandBitsFunction::RandBitsFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type randomBits. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> RandBitsFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"RAND_BITS"));
+    return instructions;
+}
+
+std::string RandBitsFunction::toString() {
+    return "Bits";
+}
+
+ReadPortAFunction::ReadPortAFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read port A. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadPortAFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"PORT_A"));
+    return instructions;
+}
+
+std::string ReadPortAFunction::toString() {
+    return "ReadPortA";
+}
+
+ReadPortBFunction::ReadPortBFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read port B. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadPortBFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"PORT_B"));
+    return instructions;
+}
+
+std::string ReadPortBFunction::toString() {
+    return "ReadPortB";
+}
+
+SetPortAFunction::SetPortAFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setPortA. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setPortA. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setPortA. Missing param 1");
+    }
+    setTo = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetPortAFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_A",std::move(setTo)));
+    return instructions;
+}
+
+std::string SetPortAFunction::toString() {
+    return "SetPortA";
+}
+
+SetPortBFunction::SetPortBFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setPortB. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setPortB. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setPortB. Missing param 1");
+    }
+    setTo = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetPortBFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_B",std::move(setTo)));
+    return instructions;
+}
+
+std::string SetPortBFunction::toString() {
+    return "SetPortB";
+}
+
+SetPortADirectionFunction::SetPortADirectionFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setPortADirection. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setPortADirection. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setPortADirection. Missing param 1");
+    }
+    setTo = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetPortADirectionFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_A_DIR",std::move(setTo)));
+    return instructions;
+}
+
+std::string SetPortADirectionFunction::toString() {
+    return "SetPortADirection";
+}
+
+SetPortBDirectionFunction::SetPortBDirectionFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type setPortBDirection. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function setPortBDirection. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function setPortBDirection. Missing param 1");
+    }
+    setTo = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> SetPortBDirectionFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_B_DIR",std::move(setTo)));
+    return instructions;
+}
+
+std::string SetPortBDirectionFunction::toString() {
+    return "SetPortBDirection";
 }

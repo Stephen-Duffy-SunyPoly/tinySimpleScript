@@ -174,3 +174,66 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class RandFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    explicit RandFunction(const std::string &retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+class RandBitsFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    explicit RandBitsFunction(const std::string &retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadPortAFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    explicit ReadPortAFunction(const std::string &retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadPortBFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    explicit ReadPortBFunction(const std::string &retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class SetPortAFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> setTo;
+public:
+    explicit SetPortAFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class SetPortBFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> setTo;
+public:
+    explicit SetPortBFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class SetPortADirectionFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> setTo;
+public:
+    explicit SetPortADirectionFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class SetPortBDirectionFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> setTo;
+public:
+    explicit SetPortBDirectionFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

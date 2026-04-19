@@ -64,12 +64,17 @@ const vector<string> reservedWords = {//note to self, add other opperators to th
 bool LCDSystem = true;
 
 //description of the high level block for parsing
-struct HighLevelDescription {
+struct HighLevelFunctionDescription {
     function<unique_ptr<HighLevelConstruct>(const string &line)> create;
 };
 
+struct HighLevelReturnFunctionDescription {
+    function<unique_ptr<HighLevelConstruct>(const string &returnVar, const string &line)> create;
+};
+
 //the built in functions
-unordered_map<string, HighLevelDescription> expansionFunctions;
+unordered_map<string, HighLevelFunctionDescription> expansionFunctions;
+unordered_map<string, HighLevelReturnFunctionDescription> returnExpansionFunctions;
 
 vector<string> globalVars;
 vector<UserFunctionData> functions;
@@ -176,7 +181,10 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                     }
                     params = params.substr(0,closeParenthesisIndex);
                     params = trim(params);
-                    //TODO built in return functions:
+                    //built in return functions:
+                    if (returnExpansionFunctions.contains(functionName)) {
+                        return returnExpansionFunctions[functionName].create(tokens[0],params);
+                    }
 
 
                     return make_unique<CallUserFunctionHighLevelOperation>(functionName,params,tokens[0]);
@@ -435,6 +443,16 @@ int main(const int argc, char* argv[]) {
 
     expansionFunctions.insert({"trap",{[](const string &line) {return make_unique<TrapHighLevelOperation>(line);}}});
     expansionFunctions.insert({"delay",{[](const string &line) {return make_unique<DelayFunction>(line);}}});
+    expansionFunctions.insert({"setPortA",{[](const string &line) {return make_unique<SetPortAFunction>(line);}}});
+    expansionFunctions.insert({"setPortB",{[](const string &line) {return make_unique<SetPortBFunction>(line);}}});
+    expansionFunctions.insert({"setPortADirection",{[](const string &line) {return make_unique<SetPortADirectionFunction>(line);}}});
+    expansionFunctions.insert({"setPortBDirection",{[](const string &line) {return make_unique<SetPortBDirectionFunction>(line);}}});
+
+
+    returnExpansionFunctions.insert({"random",{[](const string &retVar, const string &line) {return make_unique<RandFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"randomBits",{[](const string &retVar, const string &line) {return make_unique<RandBitsFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"readPortA",{[](const string &retVar, const string &line) {return make_unique<ReadPortAFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"readPortB",{[](const string &retVar, const string &line) {return make_unique<ReadPortBFunction>(retVar,line);}}});
 
     //load the langue constructs:
     if (LCDSystem) {
@@ -474,7 +492,7 @@ int main(const int argc, char* argv[]) {
     //Expansion
     vector<unique_ptr<PartialInstruction>> partialInstructions;
     for (size_t i=0;i<topLevelLocalVars.size();i++) {
-        partialInstructions.emplace_back(make_unique<StackPushPartialInstruction>(make_unique<ZeroDataType>(),0));//make space on thst stack for the top level local vars
+        partialInstructions.emplace_back(make_unique<StackPushPartialInstruction>(make_unique<ZeroDataType>(),0,"push space for "+topLevelLocalVars[topLevelLocalVars.size()-1-i]+" onto the stack"));//make space on thst stack for the top level local vars
     }
     //for each high level block
     for (auto &block : highLevelBlocks) {

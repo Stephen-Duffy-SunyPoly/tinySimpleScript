@@ -479,8 +479,9 @@ public:
 class StackPushPartialInstruction : public PartialInstruction {
     std::unique_ptr<DataType> val;
     int existingStackOffset;
+    std::string comment;
 public:
-    StackPushPartialInstruction(std::unique_ptr<DataType> val,int existingStackOffset) : val(std::move(val)), existingStackOffset(existingStackOffset) {}
+    StackPushPartialInstruction(std::unique_ptr<DataType> val,int existingStackOffset, std::string comment) : val(std::move(val)), existingStackOffset(existingStackOffset), comment(std::move(comment)) {}
     std::string toString() override {
         return "push " + val->toString();
     }
@@ -581,6 +582,23 @@ public:
     }
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return data;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class DirectLoadPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> loadTo;
+    std::string loadFrom;
+public:
+    DirectLoadPartialInstruction(std::unique_ptr<DataType> loadTo, std::string loadFrom) : loadTo(std::move(loadTo)), loadFrom(std::move(loadFrom)) {}
+    std::string toString() override {
+        return "load " + loadFrom +" into "+loadTo->toString();
+    }
+    int numVars() override {
+        return 1;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return loadTo;
     }
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };

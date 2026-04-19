@@ -2,16 +2,22 @@
 
 gvar left = 10
 gvar right = 20
+gvar top = 20
 
 do {
     left += 2
     right += 2
+    lvar rt
+    rt = randomBits()
+    rt %= 2
+    //rt -= 5
+    top += rt
     stroke(600)
     fill(600)
     clear()
     fill(1300)
     stroke(1300)
-    rect(left,20,right,50)
+    rect(left,top,right,50)
     update()
     delay(10000)
 } while (0 == 0)

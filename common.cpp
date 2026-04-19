@@ -702,6 +702,10 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     int numRegistersUsed = blockResolver.backupRegisters(finalInstructions);
     //add label if back registers before label
     if (backupPreLabel) {
+        //aldo add the local vars here because theese need to be right before the label in a loop
+        for (int i=0;i<localVariables.size();i++) {
+            finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,"rz","",false,"push space for "+localVariables[localVariables.size()-1-i]+" onto the stack"));
+        }
         finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
     }
 
@@ -841,7 +845,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPushPartialInstruction::a
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
-    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("psh",1,op1Reg,"",existingStackOffset));
+    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("psh",1,op1Reg,"",existingStackOffset,comment));
     return finishedInstructions;
 }
 
@@ -883,5 +887,15 @@ std::vector<std::unique_ptr<FinishedInstruction>> DelayPartialInstruction::assem
         op1Reg = data->asAsm();
     }
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("dly",1,op1Reg,"",false));
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> DirectLoadPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!loadTo->isVariable()) {
+        throw std::runtime_error("Load instructions require a variable to store in");
+    }
+    std::string op1Reg = resolver.resolve(loadTo,finishedInstructions,true);
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("lod",2,op1Reg,"["+loadFrom+"]",false));
     return finishedInstructions;
 }
