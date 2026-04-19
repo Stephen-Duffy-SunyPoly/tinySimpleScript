@@ -1,6 +1,7 @@
 //
 gvar rectX = 10
 gvar rectDx
+gvar count
 do {
     fill(3500)
     stroke(3500)
@@ -9,16 +10,14 @@ do {
     stroke(256)
     rectDx = rectX
     rectDx += 10
-    ////rect(rectX, 10, rectDx,20)
-    //do {
-    //    lvar count
-    //    lvar rtop = count
-    //    rtop *= 12
-    lvar rtop = 10
+    count = 0
+    do {
+        lvar rtop = count
+        rtop *= 12
+
         drect(rectX,rectDx,rtop)
-    //    count ++
-    //    count %= 4
-    //} while( count < 3)
+        count ++
+    } while( count < 5)
 
     rectX ++
     rectX %= 53

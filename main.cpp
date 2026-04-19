@@ -160,7 +160,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<UserFunctionHighLevelOperation>(functionName,params,file,lineNumber,functions);
         } else {
             //its a function!!!!
-            //check for assignment funstions
+            //check for assignment functions
             if (tokens.size() > 2) {
                 if (tokens[1] == "=") {
                     //assignment function
@@ -266,7 +266,7 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                         throw std::runtime_error("Variable name " + tokens[1] + " already defined");
                     }
                 }
-                //check if it is defined as a funcion
+                //check if it is defined as a function
                 for (const auto& s: functions) {
                     if (s.name == tokens[1]) {
                         throw std::runtime_error("Variable name " + tokens[1] + " already defined");
@@ -375,8 +375,12 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<OrHighLevelOperation>(tokens[0], tokens[2]);
         } else if (tokens[1] == "^=") {
             return make_unique<XorHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "=") {
+            return make_unique<VariableAssignment>(tokens[0], tokens[2]);
         }
 
+
+        throw std::runtime_error("Syntax error. Invalid statement: "+ noComments);
     }
     return nullptr;
 }
