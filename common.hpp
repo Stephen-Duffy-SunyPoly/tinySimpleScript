@@ -187,7 +187,7 @@ public:
     registers(registers), localVars(localVars), paramVars(std::move(paramVars)) {
         registersUsed.resize(registers.size());
     }
-    std::string resolve(std::unique_ptr<DataType>& data, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, bool wrightOp, int existingStackOffset =0);
+    std::string resolve(std::unique_ptr<DataType>& data, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, bool wrightOp, bool overwrite, int existingStackOffset =0);
     //call this after your done using this resolver
     int backupRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
     void restoreRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
