@@ -37,7 +37,7 @@ If you are looking for a real programing language / compiler to use with this ar
 | var = getMouseX()      | get the on screen x position of the mouse   |
 | var = getMouseY()      | get the on screen y position of the mouse   |
 | var = getMouseButton() | get if the left mouse button is pressed     |
-| var = getKeyboard()    | key a key from the keyboard that is pressed |
+| var = getKeyboard()    | key a key from the keyboard that is pressed |  
 If you do not set stroke and fill initially, they will be whatever stroke and fill are when update is called the first time
 
 #### Edison System
