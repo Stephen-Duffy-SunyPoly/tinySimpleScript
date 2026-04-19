@@ -1,0 +1,32 @@
+//
+gvar rectX = 10
+gvar rectDx
+do {
+    fill(3500)
+    stroke(3500)
+    clear()
+    fill(256)
+    stroke(256)
+    rectDx = rectX
+    rectDx += 10
+    ////rect(rectX, 10, rectDx,20)
+    //do {
+    //    lvar count
+    //    lvar rtop = count
+    //    rtop *= 12
+    lvar rtop = 10
+        drect(rectX,rectDx,rtop)
+    //    count ++
+    //    count %= 4
+    //} while( count < 3)
+
+    rectX ++
+    rectX %= 53
+    update()
+} while (0 == 0)
+
+function drect(left, right, top){
+    lvar bottom  = top
+    bottom += 10
+    rect(left, top,right,bottom)
+}

@@ -38,6 +38,7 @@ function fw3v(a1, a2, a3){
     print(a1)
     print(a2)
     print(a3)
+    return
 }
 
 function nice(av1){

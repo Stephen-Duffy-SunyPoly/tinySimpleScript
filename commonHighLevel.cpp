@@ -246,7 +246,7 @@ UserFunctionHighLevelOperation::UserFunctionHighLevelOperation(std::string &func
         std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed, file, lineNumber, localVars, !returnEndounmtered);
         if (lineTrimmed.starts_with("return")) {//if the line is a return statement
             returnEndounmtered = true;
-            if (block != nullptr) {//if you return nothing then no contstucts will be genrated
+            if (block != nullptr) {//if you return nothing then no constructs will be generated
                 returnsValue = true;
                 auto* rho = dynamic_cast<ReturnHighLevelOperation*>(block.get());
                 returnValue = std::move(rho->value);
@@ -280,9 +280,9 @@ std::vector<std::unique_ptr<PartialInstruction>> UserFunctionHighLevelOperation:
         }
     }
     if (returnsValue) {
-        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, std::move(returnValue)));
+        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, std::move(returnValue),false,nullptr,""));
     } else {
-        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, nullptr));
+        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name,"",localVars,paramaters, nullptr,false,nullptr,""));
     }
     return instructions;
 }
@@ -366,4 +366,109 @@ std::vector<std::unique_ptr<PartialInstruction>> ReturnHighLevelOperation::expan
 
 std::string ReturnHighLevelOperation::toString() {
     return "return "+value->toString();
+}
+
+int loopNameCounter = 1;
+
+LoopHighLevelOperation::LoopHighLevelOperation(std::ifstream &file, int &lineNumber) {
+    name = "LoopLabelInstruction_"+std::to_string(loopNameCounter++);
+    //parsing args here
+    std::string functionLine;
+    while (std::getline(file, functionLine)) {
+        lineNumber++;
+        std::string lineTrimmed = trim(functionLine);
+        if (lineTrimmed[0] == '}') {
+            lineTrimmed = lineTrimmed.substr(1);
+            lineTrimmed = trim(lineTrimmed);
+            if (!lineTrimmed.starts_with("while")) {
+                throw std::runtime_error("Syntax error. Expected 'while' after loop body");
+            }
+            lineTrimmed = lineTrimmed.substr(5);
+            lineTrimmed = trim(lineTrimmed);
+            if (lineTrimmed[0] != '(') {
+                throw std::runtime_error("Syntax error. Expected '(' after while statement");
+            }
+            lineTrimmed = lineTrimmed.substr(1);
+            lineTrimmed = trim(lineTrimmed);
+            size_t index_of_close = lineTrimmed.find(')');
+            if (index_of_close == std::string::npos) {
+                throw std::runtime_error("Syntax error. Expected ')' after loop condition");
+            }
+            lineTrimmed = lineTrimmed.substr(0,index_of_close);
+            lineTrimmed = trim(lineTrimmed);
+            std::vector<std::string> tokens;
+            size_t nextSpace = lineTrimmed.find_first_of(WHITESPACE);
+            std::string trimmedCopy = lineTrimmed;
+            if (nextSpace != std::string::npos) {
+                do {
+                    tokens.push_back(trimmedCopy.substr(0,nextSpace));
+                    trimmedCopy = trimmedCopy.substr(nextSpace+1);
+                    trimmedCopy = trim(trimmedCopy);
+                } while ((nextSpace = trimmedCopy.find_first_of(WHITESPACE)) != std::string::npos);
+            }
+            if (!trimmedCopy.empty()) {
+                tokens.push_back(trimmedCopy);//add the final token
+            }
+
+            if (tokens.size() != 3) {
+                throw std::runtime_error("Syntax error. Invalid condition expression: "+lineTrimmed);
+            }
+            check1 = parseDataType(tokens[0]);
+            check2 = parseDataType(tokens[2]);
+            if (tokens[1] == "==") {
+                condition = EQUALS;
+            } else if (tokens[1] == "!=") {
+                condition = NOT_EQUALS;
+            } else if (tokens[1] == ">") {
+                condition = GREATER_THAN;
+            } else if (tokens[1] == "<") {
+                condition = LESS_THAN;
+            } else if (tokens[1] == "<=") {
+                condition = LESS_THAN_OR_EQUALS;
+            } else if (tokens[1] == ">=") {
+                condition = GREATER_THAN_OR_EQUALS;
+            } else {
+                throw std::runtime_error("Syntax error. Invalid logical condition operator: "+tokens[1]);
+            }
+            return;
+        }
+        std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed, file, lineNumber, localVars, false);
+        if (block != nullptr) {
+            //enure that a blank line was not just processed
+            blocks.push_back(std::move(block));
+        }
+    }
+
+    throw std::runtime_error("Reached end of file while processing loop, expected loop end!");
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> LoopHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    //need a unique type that can pass the function block info on to the next stage as well as expand each component
+
+    //get the partial instructions for all the content of this function
+    std::vector<std::unique_ptr<PartialInstruction>> partialInstructions;
+    for (size_t i = 0; i < localVars.size(); i++) {//push space for local vars into the stack
+        instructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+    }
+    //for each high level block
+    for (auto &block : blocks) {
+        //get the expanded content
+        std::vector<std::unique_ptr<PartialInstruction>> tmp = block->expand();
+        for (auto &instruction : tmp) {
+            partialInstructions.push_back(std::move(instruction));//add that content to the overall instruction list
+        }
+    }
+    //special loop instructions
+    std::vector<std::string> noParams;
+
+    instructions.emplace_back(std::make_unique<FlushGlobalVarsPartialInstruction>());
+    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(partialInstructions),name+"_Start",name+"_Start",localVars,noParams, nullptr,true,
+                                                                        std::make_unique<JumpConditionPartialInstruction>(std::move(check1),std::move(check2),condition,name+"_End"),name+"_End"));
+    // instructions.emplace_back(std::make_unique<LabelPartialInstruction>(name+"_End"));
+    return instructions;
+}
+
+std::string LoopHighLevelOperation::toString() {
+    return "Loop";
 }

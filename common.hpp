@@ -8,6 +8,33 @@
 
 const std::string WHITESPACE = " \t\n\r\f\v";
 
+enum ConditionType {
+    EQUALS,
+    NOT_EQUALS,
+    GREATER_THAN,
+    LESS_THAN,
+    GREATER_THAN_OR_EQUALS,
+    LESS_THAN_OR_EQUALS
+};
+
+inline std::string conditionToOppositeJump(const ConditionType condition) {
+    switch(condition) {
+        case EQUALS:
+            return "jne";
+        case NOT_EQUALS:
+            return "je";
+        case GREATER_THAN:
+            return "jle";
+        case LESS_THAN:
+            return "jge";
+        case GREATER_THAN_OR_EQUALS:
+            return "jl";
+        case LESS_THAN_OR_EQUALS:
+            return "jg";
+    }
+    return "WOW THAT AN ERROR AND NOT A CONDITIONAL JUMP!";
+}
+
 //unitiliy functions
 
 //why does c++ not have one of these?
@@ -163,6 +190,7 @@ public:
     //call before any function call or block code
     void flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
     void correctExtraStackVars(int numRegsUsed, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
+    void saveAllDirtyRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
 };
 
 
@@ -393,8 +421,13 @@ class BlockPartialInstruction : public PartialInstruction {
     std::vector<std::string> localVariables;
     std::vector<std::string> paramVars;
     std::unique_ptr<DataType> returnValue;
+    bool backupPreLabel;
+    std::unique_ptr<PartialInstruction> endLoopCondition;
+    std::string cleanupLabel;//only used if backupPreLabel is true
+
 public:
-    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, const std::vector<std::string> &localVars, std::vector<std::string> paramVars, std::unique_ptr<DataType> returnData) : internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars), paramVars(std::move(paramVars)), returnValue(std::move(returnData)) {}
+    BlockPartialInstruction(std::vector<std::unique_ptr<PartialInstruction>> content, std::string name, std::string endJmpLbl, const std::vector<std::string> &localVars, std::vector<std::string> paramVars, std::unique_ptr<DataType> returnData, bool backUpBeforeLabel, std::unique_ptr<PartialInstruction> endLoopCondition, std::string cleanupLabel) :
+    internalInstructions(std::move(content)), name(std::move(name)), endJmp(std::move(endJmpLbl)), localVariables(localVars), paramVars(std::move(paramVars)), returnValue(std::move(returnData)), backupPreLabel(backUpBeforeLabel), endLoopCondition(std::move(endLoopCondition)), cleanupLabel(std::move(cleanupLabel)) {}
     std::string toString() override;
     int numVars() override;
     std::unique_ptr<DataType>& getVariable(int vn) override;
@@ -468,6 +501,65 @@ public:
     }
     std::unique_ptr<DataType>& getVariable(int vn) override {
         return val;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class LabelPartialInstruction : public PartialInstruction {
+    std::string name;
+    std::unique_ptr<DataType> ignore;//its null just so there is a valid def for get variable
+public:
+    explicit LabelPartialInstruction(std::string name) : name(std::move(name)) {}
+    std::string toString() override {
+        return "label " + name;
+    }
+    int numVars() override {
+        return 0;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return ignore;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override {
+        std::vector<std::unique_ptr<FinishedInstruction>> instructions;
+        instructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
+        return instructions;
+    }
+};
+
+class JumpConditionPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> data1;
+    std::unique_ptr<DataType> data2;
+    ConditionType condition;
+    std::string jumpTo;
+public:
+    JumpConditionPartialInstruction(std::unique_ptr<DataType> data1, std::unique_ptr<DataType> data2, ConditionType condition, std::string jumpTo) : data1(std::move(data1)), data2(std::move(data2)), condition(condition), jumpTo(std::move(jumpTo)) {}
+    std::string toString() override {
+        return "jump if " + data1->toString() + " "+std::to_string(condition)+" " + data2->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn==0) {
+            return data1;
+        }
+        return data2;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class FlushGlobalVarsPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> ignore;
+public:
+    FlushGlobalVarsPartialInstruction() = default;
+    std::string toString() override {
+        return "flush";
+    }
+    int numVars() override {
+        return 0;
+    };
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return ignore;
     }
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };

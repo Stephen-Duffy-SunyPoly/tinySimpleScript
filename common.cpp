@@ -12,6 +12,9 @@ std::string VariableDataType::asAsm() {
         //add 1 to the stack offset as the value of sp if the next stack value to be used not what we are refrencing
         return "[sp+"+std::to_string(offset+1)+"]";
     } else {
+        if (varName.empty()) {
+            throw std::runtime_error("Attempted to assemble empty variable");
+        }
         return "["+varName+"]";
     }
 }
@@ -127,6 +130,7 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
                 highestLruValue = registers[i].lru;
             }
         }
+        //set the register name
         outputRegister[1] += static_cast<char>(lruIndex); // NOLINT(*-narrowing-conversions)
         //if the reg is dirty then save the current value
         if (registers[lruIndex].dirty) {
@@ -157,6 +161,9 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
                     partiallyResolvedStackVars.push_back(endPtr);//another microslop hallucinated error
                 }
             } else {
+                if (registers[lruIndex].varName.empty()) {
+                    throw std::runtime_error("Attempted to store empty global var!");
+                }
                 finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[lruIndex].varName+"]",outputRegister));
             }
         }
@@ -229,7 +236,6 @@ void RegisterResolver::restoreRegisters(std::vector<std::unique_ptr<FinishedInst
 
 void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) const {
     for (size_t i = 0; i < registers.size(); i++) {
-        //TODO check this id a global var once we have a way to check that stuff
         if (!registers[i].varName.empty()){
             if (registers[i].dirty) {
                 bool stack = false;
@@ -250,13 +256,14 @@ void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstr
                     outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
                     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister));
                     //clear this reg
+                    //make this as an empty reg
+                    registers[i].varName = "";
+                    registers[i].lru = 10000000;
+                    registers[i].imValue =0;
                     registers[i].dirty = false;
                 }
             }
-            //make this as an empty reg
-            registers[i].varName = "";
-            registers[i].lru = 10000000;
-            registers[i].imValue =0;
+
         }
     }
 }
@@ -283,6 +290,38 @@ void RegisterResolver::correctExtraStackVars(int numRegsUsed, std::vector<std::u
             if (spof >= localVars.size()+1) {
                 spof +=offsetBy;
                 instruction->op2 = "[sp+"+std::to_string(spof)+"]";
+            }
+        }
+    }
+}
+
+void RegisterResolver::saveAllDirtyRegisters(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) {
+    for (size_t i = 0; i < registers.size(); i++) {
+        if (registers[i].dirty) {
+            bool stack = false;
+            for (auto& var : localVars) {
+                if (var== registers[i].varName) {
+                    stack = true;
+                    break;
+                }
+            }
+            for (auto& var : paramVars) {
+                if (var== registers[i].varName) {
+                    stack = true;
+                    break;
+                }
+            }
+            registers[i].dirty = false;
+            std::string outputRegister = "rA";
+            outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
+            if (!stack) {
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister));
+            } else {
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[i].imValue)+"]",outputRegister));
+                if (registers[i].imValue >= localVars.size()) {
+                    FinishedInstruction * endPtr = finishedInstructions.back().get();
+                    partiallyResolvedStackVars.push_back(endPtr);
+                }
             }
         }
     }
@@ -532,6 +571,13 @@ std::unique_ptr<DataType> & BlockPartialInstruction::getVariable(int vn) {
         }
         rt += ni;
     }
+    if (endLoopCondition != nullptr) {
+        int ni = endLoopCondition->numVars();
+        if (rt+ni > vn) {
+            return endLoopCondition->getVariable(vn-rt);
+        }
+        rt += ni;
+    }
     if (returnValue != nullptr && rt == vn) {
         return returnValue;
     }
@@ -558,14 +604,29 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     if (returningValue) {
         returnValueReg = blockResolver.resolve(returnValue,inProgressInstructions,false);
     }
-    //add label
-    finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
+    //add label if label before register backup
+    if (!backupPreLabel) {
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
+    }
     //pre pend all the register and stack var prep
     int numRegistersUsed = blockResolver.backupRegisters(finalInstructions);
+    //add label if back registers before label
+    if (backupPreLabel) {
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
+    }
 
+    if (endLoopCondition != nullptr) {
+        //save all used registers
+        blockResolver.saveAllDirtyRegisters(inProgressInstructions);
+        std::vector<std::unique_ptr<FinishedInstruction>> tmp = endLoopCondition->assemble(blockResolver);
+        for (auto &instInfo : tmp) {
+            inProgressInstructions.emplace_back(std::move(instInfo));
+        }
+    }
     //account for params stack offset
     blockResolver.correctExtraStackVars(numRegistersUsed,inProgressInstructions);
     //stack var are already pushed at this point by the system in the level above this
+
 
     //add all the computed instructions
     for (auto &instruction: inProgressInstructions) {
@@ -583,6 +644,15 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     //flush changed global vars
     blockResolver.flushGlobalVars(finalInstructions);
 
+
+    if (backupPreLabel) {//if backup pre label then do not clean up the stack until after the label
+        if (endJmp.empty()) {
+            finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("ret",0,"","",false));
+        } else {
+            finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("jmp",1,"!"+endJmp,"",false));
+        }
+        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(cleanupLabel,0,"","",true));
+    }
     //add the stack cleanup
     //pop stack vars here
     for (size_t i=0;i<localVariables.size();i++) {
@@ -590,11 +660,13 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     }
     blockResolver.restoreRegisters(finalInstructions);
 
-    //add final jump for return
-    if (endJmp.empty()) {
-        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("ret",0,"","",false));
-    } else {
-        finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("jmp",1,"!"+endJmp,"",false));
+    //add final jump for return if the label goes after the restore
+    if (!backupPreLabel) {
+        if (endJmp.empty()) {
+            finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("ret",0,"","",false));
+        } else {
+            finalInstructions.emplace_back(std::make_unique<FinishedInstruction>("jmp",1,"!"+endJmp,"",false));
+        }
     }
 
     return finalInstructions;
@@ -616,6 +688,13 @@ std::vector<std::string> BlockPartialInstruction::getLocalVarScope(int vn, std::
         int ni = inst->numVars();
         if (rt+ni > vn) {//if adding this instructions vars to the total pust the one we want out of reach
             return inst->getLocalVarScope(vn-rt,localVarsAndParams);//its in this one
+        }
+        rt += ni;
+    }
+    if (endLoopCondition != nullptr) {
+        int ni = endLoopCondition->numVars();
+        if (rt+ni > vn) {
+            return endLoopCondition->getLocalVarScope(vn-rt,localVarsAndParams);
         }
         rt += ni;
     }
@@ -685,5 +764,22 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPopPartialInstruction::as
         op1Reg = val->asAsm();
     }
     finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("pop",1,op1Reg,"",existingStackOffset));
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> JumpConditionPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    std::string op1Reg = resolver.resolve(data1,finishedInstructions,true);
+    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    if (data2->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(data2,finishedInstructions,false);
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = data2->asAsm();
+    }
+    //compare instruction
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("cmp",2,op1Reg,op2Reg,false));
+    //jump time!
+    std::string jumpType = conditionToOppositeJump(condition);
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(jumpType,1,"!"+jumpTo,"",false));
     return finishedInstructions;
 }

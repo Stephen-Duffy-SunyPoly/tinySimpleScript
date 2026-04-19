@@ -76,6 +76,12 @@ vector<UserFunctionData> functions;
 
 vector<Register> registers;
 
+std::vector<std::unique_ptr<FinishedInstruction>> FlushGlobalVarsPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> instructions;
+    resolver.flushGlobalVars(instructions);
+    return instructions;
+}
+
 unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber, vector<string> &localVars, bool returnAllowed) {
     size_t commentStart = line.find("//");
     if (commentStart == string::npos) {
@@ -95,11 +101,13 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
         string trimmedCopy = lineTrimmed;
         size_t firstSpace = trimmedCopy.find_first_of(WHITESPACE);
         size_t nextSpace = firstSpace;
-        do {
-            tokens.push_back(trimmedCopy.substr(0,nextSpace));
-            trimmedCopy = trimmedCopy.substr(nextSpace+1);
-            trimmedCopy = trim(trimmedCopy);
-        } while ((nextSpace = trimmedCopy.find_first_of(WHITESPACE)) != string::npos);
+        if (firstSpace != string::npos) {
+            do {
+                tokens.push_back(trimmedCopy.substr(0,nextSpace));
+                trimmedCopy = trimmedCopy.substr(nextSpace+1);
+                trimmedCopy = trim(trimmedCopy);
+            } while ((nextSpace = trimmedCopy.find_first_of(WHITESPACE)) != string::npos);
+        }
         if (!trimmedCopy.empty()) {
             tokens.push_back(trimmedCopy);//add the final token
         }
@@ -200,15 +208,37 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
         vector<string> tokens;
         //tokenize the line
         size_t firstSpace = lineTrimmed.find_first_of(WHITESPACE);
-        do {
-            tokens.push_back(lineTrimmed.substr(0,firstSpace));
-            lineTrimmed = lineTrimmed.substr(firstSpace+1);
-            lineTrimmed = trim(lineTrimmed);
-        } while ((firstSpace = lineTrimmed.find_first_of(WHITESPACE)) != string::npos);
+        if (firstSpace != string::npos) {
+            do {
+                tokens.push_back(lineTrimmed.substr(0,firstSpace));
+                lineTrimmed = lineTrimmed.substr(firstSpace+1);
+                lineTrimmed = trim(lineTrimmed);
+            } while ((firstSpace = lineTrimmed.find_first_of(WHITESPACE)) != string::npos);
+        }
         if (!lineTrimmed.empty()) {
             tokens.push_back(lineTrimmed);//add the final token
         }
         //first check the things who have a significant token as the first token
+        if (tokens[0] == "return") {
+            if (!returnAllowed) {
+                throw std::runtime_error("Return not allowed here! Return must be the last statement of a function and can not be inside another block");
+            }
+            if (tokens.size() == 1) {
+                return nullptr;//just a void return no need to return anything
+            }
+            if (tokens.size() >2) {
+                throw std::runtime_error("Syntax error. return expects at most 1 parameter");
+            }
+            return make_unique<ReturnHighLevelOperation>(tokens[1]);
+        } else if (tokens[0].starts_with("do")) {
+            if (tokens[0].size() == 2 && tokens.size() == 2) {//if it is just do then check the next token
+                if (tokens[1] == "{") {//success!
+                    return make_unique<LoopHighLevelOperation>(file,lineNumber);
+                }
+            } else if (tokens[0] == "do{" && tokens.size() == 1) {
+                return make_unique<LoopHighLevelOperation>(file,lineNumber);
+            }
+        }
         if (tokens[0] == "gvar") { //declaring global vars
             //token 1 will be the name of the var
             if (tokens.size() > 1) {
@@ -311,17 +341,6 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
                 throw std::runtime_error("Syntax error. Expected identifier after gvar but got nothing");
             }
             return nullptr;
-        } else if (tokens[0] == "return") {
-            if (!returnAllowed) {
-                throw std::runtime_error("Return not allowed here! Return must be the last statment of a funcion and can not be inside another block");
-            }
-            if (tokens.size() == 1) {
-                return nullptr;//just a void return no need to return anything
-            }
-            if (tokens.size() >2) {
-                throw std::runtime_error("Syntax error. return expects at most 1 parameter");
-            }
-            return make_unique<ReturnHighLevelOperation>(tokens[1]);
         }
         //end of first token significance
         if (tokens.size() == 1) {

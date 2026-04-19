@@ -139,3 +139,16 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class LoopHighLevelOperation: public HighLevelConstruct {
+    std::vector<std::unique_ptr<HighLevelConstruct>> blocks;
+    std::string name;
+    std::vector<std::string> localVars;
+    std::unique_ptr<DataType> check1;
+    std::unique_ptr<DataType> check2;
+    ConditionType condition;
+public:
+    explicit LoopHighLevelOperation(std::ifstream& file, int & lineNumber);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
