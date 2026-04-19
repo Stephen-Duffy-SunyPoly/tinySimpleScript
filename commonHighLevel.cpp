@@ -472,3 +472,145 @@ std::vector<std::unique_ptr<PartialInstruction>> LoopHighLevelOperation::expand(
 std::string LoopHighLevelOperation::toString() {
     return "Loop";
 }
+
+IfHighLevelOperation::IfHighLevelOperation(const std::string& conditionRaw, std::ifstream &file, int &lineNumber){
+
+    std::vector<std::string> tokens;
+    size_t nextSpace = conditionRaw.find_first_of(WHITESPACE);
+    std::string trimmedCopy = conditionRaw;
+    if (nextSpace != std::string::npos) {
+        do {
+            tokens.push_back(trimmedCopy.substr(0,nextSpace));
+            trimmedCopy = trimmedCopy.substr(nextSpace+1);
+            trimmedCopy = trim(trimmedCopy);
+        } while ((nextSpace = trimmedCopy.find_first_of(WHITESPACE)) != std::string::npos);
+    }
+    if (!trimmedCopy.empty()) {
+        tokens.push_back(trimmedCopy);//add the final token
+    }
+
+    if (tokens.size() != 3) {
+        throw std::runtime_error("Syntax error. Invalid condition expression: "+conditionRaw);
+    }
+    check1 = parseDataType(tokens[0]);
+    check2 = parseDataType(tokens[2]);
+    if (tokens[1] == "==") {
+        condition = EQUALS;
+    } else if (tokens[1] == "!=") {
+        condition = NOT_EQUALS;
+    } else if (tokens[1] == ">") {
+        condition = GREATER_THAN;
+    } else if (tokens[1] == "<") {
+        condition = LESS_THAN;
+    } else if (tokens[1] == "<=") {
+        condition = LESS_THAN_OR_EQUALS;
+    } else if (tokens[1] == ">=") {
+        condition = GREATER_THAN_OR_EQUALS;
+    } else {
+        throw std::runtime_error("Syntax error. Invalid logical condition operator: "+tokens[1]);
+    }
+
+    //end of condition parsing
+    bool elseBlock = false;
+    std::string functionLine;
+    while (std::getline(file, functionLine)) {
+        lineNumber++;
+        std::string lineTrimmed = trim(functionLine);
+        //check for the end of the block
+        if (lineTrimmed[0] == '}') {
+            //check for else or and of the block
+            lineTrimmed = lineTrimmed.substr(1);
+            lineTrimmed = trim(lineTrimmed);
+            if (lineTrimmed.empty()) {//we found the end
+                return;
+            }
+            if (!elseBlock) {
+                if (lineTrimmed.starts_with("else")) {
+                    lineTrimmed = lineTrimmed.substr(4);
+                    lineTrimmed = trim(lineTrimmed);
+                    if (lineTrimmed.size() == 1) {
+                        if (lineTrimmed[0] == '{') {
+                            elseBlock = true;
+                            continue;
+                        }
+                    }
+                }
+            }
+            throw std::runtime_error("Syntax error. Invalid statement following } "+lineTrimmed);
+        }
+
+        if (elseBlock) {
+            std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed, file, lineNumber, falseLocalVars, false);
+            if (block != nullptr) {
+                //enure that a blank line was not just processed
+                falseBlocks.push_back(std::move(block));
+            }
+        } else {
+            std::unique_ptr<HighLevelConstruct> block = parseFileLine(lineTrimmed, file, lineNumber, trueLocalVars, false);
+            if (block != nullptr) {
+                //enure that a blank line was not just processed
+                trueBlocks.push_back(std::move(block));
+            }
+        }
+    }
+}
+
+int ifStatementNumber =1;
+
+std::vector<std::unique_ptr<PartialInstruction>> IfHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    std::vector<std::unique_ptr<PartialInstruction>> trueInstructions;
+    std::vector<std::unique_ptr<PartialInstruction>> falseInstructions;
+    std::vector<std::string> noParams;
+
+    std::string trueLabel = "startIfStatmentLabel_"+std::to_string(ifStatementNumber);
+    std::string endLabel = "endIfStatmentLabel_"+std::to_string(ifStatementNumber);
+    std::string elseLabel;
+    if (!falseBlocks.empty()) {
+        elseLabel = "elseIfStatmentLabel_"+std::to_string(ifStatementNumber);
+    } else {
+        elseLabel = endLabel;
+    }
+    ifStatementNumber ++;
+    //condition jump
+    instructions.emplace_back(std::make_unique<FlushGlobalVarsPartialInstruction>());
+    instructions.emplace_back(std::make_unique<JumpConditionPartialInstruction>(std::move(check1),std::move(check2),condition,elseLabel));
+
+    //<inside true block> push local vars
+    for (auto &_: trueLocalVars) {
+        trueInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+    }
+    for (auto &thing: trueBlocks) {
+        std::vector<std::unique_ptr<PartialInstruction>> tmp = thing->expand();
+        for (auto &instruction: tmp) {
+            trueInstructions.push_back(std::move(instruction));
+        }
+    }
+    instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(trueInstructions),trueLabel,endLabel, trueLocalVars,noParams,nullptr,false,nullptr,""));
+    //expand true instruction into true block
+
+    if (!falseBlocks.empty()) {
+        //<optional> false block
+        for (auto &tv: falseLocalVars) {
+            falseInstructions.emplace_back(std::make_unique<StackPushPartialInstruction>(std::make_unique<ZeroDataType>(),0));
+        }
+
+        //<inside false block> push false local vars
+        //expand false instructions
+        for (auto &thing: falseBlocks) {
+            std::vector<std::unique_ptr<PartialInstruction>> tmp = thing->expand();
+            for (auto &instruction: tmp) {
+                falseInstructions.push_back(std::move(instruction));
+            }
+        }
+        instructions.emplace_back(std::make_unique<BlockPartialInstruction>(std::move(falseInstructions),elseLabel,endLabel, falseLocalVars,noParams,nullptr,false,nullptr,""));
+    }
+    //end label
+    instructions.emplace_back(std::make_unique<LabelPartialInstruction>(endLabel));
+
+    return instructions;
+}
+
+std::string IfHighLevelOperation::toString() {
+    return "If";
+}

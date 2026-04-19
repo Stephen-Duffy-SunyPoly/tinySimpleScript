@@ -1,6 +1,5 @@
 #pragma once
 #include <memory>
-#include <utility>
 #include "common.hpp"
 
 
@@ -149,6 +148,21 @@ class LoopHighLevelOperation: public HighLevelConstruct {
     ConditionType condition;
 public:
     explicit LoopHighLevelOperation(std::ifstream& file, int & lineNumber);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class IfHighLevelOperation: public HighLevelConstruct {
+    std::vector<std::unique_ptr<HighLevelConstruct>> trueBlocks;
+    std::vector<std::unique_ptr<HighLevelConstruct>> falseBlocks;
+    std::string name;
+    std::vector<std::string> trueLocalVars;
+    std::vector<std::string> falseLocalVars;
+    std::unique_ptr<DataType> check1;
+    std::unique_ptr<DataType> check2;
+    ConditionType condition;
+public:
+    explicit IfHighLevelOperation(const std::string& conditionRaw, std::ifstream& file, int & lineNumber);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };

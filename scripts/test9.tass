@@ -1,0 +1,26 @@
+//this file is to test if statements
+
+gvar v1 = 15
+gvar v2 = 32
+
+lvar c1 = 3
+
+if (c1 > 3) {
+    lvar lp = 6
+    lp += v1
+    print(lp)
+    fill(100)
+} else {
+    lvar fp = 4
+    fp += v2
+    print(fp)
+    fill(5000)
+}
+
+if(c1 > 4){
+    print(v2)
+}
+
+clear()
+update()
+trap()

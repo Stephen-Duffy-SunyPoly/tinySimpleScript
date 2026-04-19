@@ -191,16 +191,26 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             if (closeParenthesisIndex == string::npos) {
                 throw std::runtime_error("Syntax Error, unclosed function call, expected ')'");
             }
+            std::string postParams = params.substr(closeParenthesisIndex+1);
             params = params.substr(0,closeParenthesisIndex);
             params = trim(params);
-            if (expansionFunctions.contains(functionName)) {
-                return expansionFunctions[functionName].create(params);
-            } else {
-                //it might be a user defined function!
-                return make_unique<CallUserFunctionHighLevelOperation>(functionName,params,"");
-                //do that here.
-                //for now tho:
-                // throw std::runtime_error("Function " + functionName + " not found");
+            postParams = trim(postParams);
+            if (functionName == "if") {
+                //check for the openeing of the block
+                if (postParams.length() == 1 && postParams[0] == '{') {
+                    return make_unique<IfHighLevelOperation>(params,file,lineNumber);
+                }
+                throw runtime_error("Syntax Error, if statment openeing expected {");
+            }else {
+                if (expansionFunctions.contains(functionName)) {
+                    return expansionFunctions[functionName].create(params);
+                } else {
+                    //it might be a user defined function!
+                    return make_unique<CallUserFunctionHighLevelOperation>(functionName,params,"");
+                    //do that here.
+                    //for now tho:
+                    // throw std::runtime_error("Function " + functionName + " not found");
+                }
             }
         }
     } else {
