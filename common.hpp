@@ -156,9 +156,12 @@ struct FinishedInstruction {
     std::string op1;
     std::string op2;
     bool label = false;
+    std::string comment;
     virtual std::string produce();
     FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)) {}
+    FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2, std::string comment): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)),comment(std::move(comment)) {}
     FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2, bool label): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)), label(label) {}
+    FinishedInstruction(std::string operation,int operands,std::string op1,std::string op2, bool label, std::string comment): operation(std::move(operation)), operands(operands), op1(std::move(op1)), op2(std::move(op2)), label(label), comment(std::move(comment)) {}
 };
 
 struct StackModificationAccountingFinishedInstruction: public FinishedInstruction {
@@ -166,8 +169,10 @@ struct StackModificationAccountingFinishedInstruction: public FinishedInstructio
 
     StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, int stack_offset)
         : FinishedInstruction(operation, operands, op1, op2),stackOffset(stack_offset) {}
-    StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, bool label, int stack_offset)
-        : FinishedInstruction(operation, operands, op1, op2, label),stackOffset(stack_offset) {}
+    StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, int stack_offset, std::string comment)
+        : FinishedInstruction(operation, operands, op1, op2,comment),stackOffset(stack_offset) {}
+    StackModificationAccountingFinishedInstruction(const std::string &operation, int operands, const std::string &op1,const std::string &op2, bool label, int stack_offset, std::string comment)
+        : FinishedInstruction(operation, operands, op1, op2, label, comment),stackOffset(stack_offset) {}
     std::string produce() override;
 };
 
@@ -189,7 +194,7 @@ public:
 
     //call before any function call or block code
     void flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
-    void correctExtraStackVars(int numRegsUsed, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
+    void correctExtraStackVars(int numRegsUsed) const;
     void saveAllDirtyRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
 };
 

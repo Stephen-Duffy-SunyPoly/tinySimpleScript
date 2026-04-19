@@ -1,4 +1,4 @@
-//
+//this file is to test loops
 gvar rectX = 10
 gvar rectDx
 gvar count
@@ -11,7 +11,8 @@ do {
     rectDx = rectX
     rectDx += 10
     count = 0
-    do {
+    //note local vars declared outside the loop are not viable inside the loop
+    do {//note to self perhaps add a way to declair and initialize local vars just outside the loop
         lvar rtop = count
         rtop *= 12
 

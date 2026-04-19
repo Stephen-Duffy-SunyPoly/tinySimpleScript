@@ -36,6 +36,9 @@ std::string FinishedInstruction::produce() {
         }
     }
     //add comment here
+    if (!comment.empty()) {
+        result += "\t; "+comment;
+    }
     return result;
 }
 
@@ -73,6 +76,9 @@ std::string StackModificationAccountingFinishedInstruction::produce() {
                 result += op2Val;
             }
         }
+    }
+    if (!comment.empty()) {
+        result += "\t; "+comment;
     }
     //add comment here
     return result;
@@ -151,9 +157,9 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
             }
             if (stack) {
                 if (existingStackOffset != 0) {
-                    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,existingStackOffset));
+                    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,existingStackOffset,"save "+registers[lruIndex].varName+" to memory"));
                 } else {
-                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister));
+                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,"save "+registers[lruIndex].varName+" to memory"));
                 }
                 // std::cout << registers[lruIndex].imValue << std::endl;
                 if (registers[lruIndex].imValue >= localVars.size()) {
@@ -164,15 +170,16 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
                 if (registers[lruIndex].varName.empty()) {
                     throw std::runtime_error("Attempted to store empty global var!");
                 }
-                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[lruIndex].varName+"]",outputRegister));
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[lruIndex].varName+"]",outputRegister,"save "+registers[lruIndex].varName+" to memory"));
             }
         }
         //load the new value into the register
         const std::string loadCommand = lookForVar ? "lod": "set";
+        std::string commentName = lookForVar ? varName:std::to_string(imValue);
         if (existingStackOffset !=0) {
-            finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>(loadCommand,2,outputRegister,data->asAsm(),existingStackOffset));
+            finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>(loadCommand,2,outputRegister,data->asAsm(),existingStackOffset, "load "+commentName +" into "+ outputRegister));
         } else {
-            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,outputRegister,data->asAsm()));
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,outputRegister,data->asAsm(),"load "+commentName +" into "+ outputRegister));
         }
         //check if it is extra stack and store the index for later correction
         if (lookForVar) {
@@ -217,7 +224,7 @@ int RegisterResolver::backupRegisters(std::vector<std::unique_ptr<FinishedInstru
         if (registersUsed[i]) {//this register has been used, back it up!
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,regName,""));
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("psh",1,regName,"","backup "+regName+" to the stack"));
             uregCnt++;
         }
     }
@@ -229,7 +236,7 @@ void RegisterResolver::restoreRegisters(std::vector<std::unique_ptr<FinishedInst
         if (registersUsed[i]) {
             std::string regName = "rA";
             regName[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,regName,""));
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("pop",1,regName,"","restore "+regName+" from the stack"));
         }
     }
 }
@@ -254,7 +261,7 @@ void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstr
                 if (!stack) {
                     std::string outputRegister = "rA";
                     outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
-                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister));
+                    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister,"flush "+registers[i].varName+" to memory"));
                     //clear this reg
                     //make this as an empty reg
                     registers[i].varName = "";
@@ -268,7 +275,7 @@ void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstr
     }
 }
 
-void RegisterResolver::correctExtraStackVars(int numRegsUsed, std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) const {
+void RegisterResolver::correctExtraStackVars(int numRegsUsed) const {
     int offsetBy = numRegsUsed + 1;
     //what is this has not elements
     for (auto instruction: partiallyResolvedStackVars) {
@@ -315,9 +322,9 @@ void RegisterResolver::saveAllDirtyRegisters(std::vector<std::unique_ptr<Finishe
             std::string outputRegister = "rA";
             outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
             if (!stack) {
-                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister));
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister,"save "+registers[i].varName+" to memory"));
             } else {
-                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[i].imValue)+"]",outputRegister));
+                finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[i].imValue)+"]",outputRegister,"save "+registers[i].varName+" to memory"));
                 if (registers[i].imValue >= localVars.size()) {
                     FinishedInstruction * endPtr = finishedInstructions.back().get();
                     partiallyResolvedStackVars.push_back(endPtr);
@@ -343,14 +350,25 @@ std::unique_ptr<DataType> & VariableAssignPartialInstruction::getVariable(int vn
 
 std::vector<std::unique_ptr<FinishedInstruction>> VariableAssignPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("Variable assignment must have a varable on the left hand side");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
+
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("set",2,op1Reg,op2Reg));
+
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("set",2,op1Reg,op2Reg,"set "+op1comment+" to "+op2Comment));
     return finishedInstructions;
 }
 
@@ -363,14 +381,23 @@ std::unique_ptr<DataType> & AddPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> AddPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("add operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("add",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("add",2,op1Reg,op2Reg,"add "+op2Comment+" to "+op1comment));
     return finishedInstructions;
 }
 
@@ -383,14 +410,23 @@ std::unique_ptr<DataType> & SubtractPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> SubtractPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("subtract operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("sub",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("sub",2,op1Reg,op2Reg,"subtract "+op2Comment+" from "+op1comment));
     return finishedInstructions;
 }
 
@@ -403,14 +439,23 @@ std::unique_ptr<DataType> & MultiplyPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> MultiplyPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("multiply operation left hand side must be a variable");
+    }
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mpy",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mpy",2,op1Reg,op2Reg,"multiply "+op2Comment+" with "+op1comment));
     return finishedInstructions;
 }
 
@@ -423,14 +468,23 @@ std::unique_ptr<DataType> & DividePartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> DividePartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("divide operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
     std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("div",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("div",2,op1Reg,op2Reg,"divide "+op1comment+" by "+op2Comment));
     return finishedInstructions;
 }
 
@@ -443,14 +497,23 @@ std::unique_ptr<DataType> & ModulusPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> ModulusPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("mod operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
-    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mod",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("mod",2,op1Reg,op2Reg, "mod "+op1comment+" by "+op2Comment));
     return finishedInstructions;
 }
 
@@ -463,14 +526,23 @@ std::unique_ptr<DataType> & AndPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> AndPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("and operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
-    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("and",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("and",2,op1Reg,op2Reg,"and "+op1comment+" with "+op2Comment));
     return finishedInstructions;
 }
 
@@ -483,14 +555,23 @@ std::unique_ptr<DataType> & OrPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> OrPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("or operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
-    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("or",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("or",2,op1Reg,op2Reg,"or "+op1comment+" with "+op2Comment));
     return finishedInstructions;
 }
 
@@ -503,14 +584,23 @@ std::unique_ptr<DataType> & XorPartialInstruction::getVariable(int vn) {
 
 std::vector<std::unique_ptr<FinishedInstruction>> XorPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!to->isVariable()) {
+        throw std::runtime_error("xor operation left hand side must be a variable");
+    }
     std::string op1Reg = resolver.resolve(to,finishedInstructions,true);
-    std::string op2Reg;// = resolver.resolve(from,finishedInstructions,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(to.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
     if (from->isVariable()) {//if it is a variable the resolve it
         op2Reg = resolver.resolve(from,finishedInstructions,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(from.get());
+        op2Comment = vdt->getVarName();
     } else {//if it is not a variable it does not need to be resolved for this
         op2Reg = from->asAsm();
+        op2Comment = from->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("xor",2,op1Reg,op2Reg));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("xor",2,op1Reg,op2Reg, "xor "+op1comment+" with "+op2Comment));
     return finishedInstructions;
 }
 
@@ -624,7 +714,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
         }
     }
     //account for params stack offset
-    blockResolver.correctExtraStackVars(numRegistersUsed,inProgressInstructions);
+    blockResolver.correctExtraStackVars(numRegistersUsed);
     //stack var are already pushed at this point by the system in the level above this
 
 
