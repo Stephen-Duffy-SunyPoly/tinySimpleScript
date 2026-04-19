@@ -18,6 +18,14 @@ do {
     fill(1300)
     stroke(1300)
     rect(left,top,right,50)
+    lvar mouseX
+    mouseX = getMouseX()
+    lvar mouseY
+    mouseY = getMouseY()
+
+    stroke(3000)
+    point(mouseX,mouseY)
+
     update()
     delay(10000)
 } while (0 == 0)

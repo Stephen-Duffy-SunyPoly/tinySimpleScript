@@ -108,3 +108,35 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class ReadMouseXFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> retVal;
+public:
+    explicit ReadMouseXFunction(const std::string& retVar,const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadMouseYFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> retVal;
+public:
+    explicit ReadMouseYFunction(const std::string& retVar,const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadMouseButtonFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> retVal;
+public:
+    explicit ReadMouseButtonFunction(const std::string& retVar,const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadKeyboardFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> retVal;
+public:
+    explicit ReadKeyboardFunction(const std::string& retVar,const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

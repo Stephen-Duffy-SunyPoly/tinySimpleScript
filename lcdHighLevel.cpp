@@ -337,3 +337,71 @@ std::vector<std::unique_ptr<PartialInstruction>> LineFunction::expand() {
 std::string LineFunction::toString() {
     return "line ( "+xPos->toString()+", "+yPos->toString()+", "+x2Pos->toString()+", "+y2Pos->toString()+" )";
 }
+
+ReadMouseXFunction::ReadMouseXFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read mouse X. Too many parameters");
+    }
+    retVal= parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadMouseXFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(retVal),"MOUSEX"));
+    return instructions;
+}
+
+std::string ReadMouseXFunction::toString() {
+    return "getMouseX";
+}
+
+ReadMouseYFunction::ReadMouseYFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read mouse Y. Too many parameters");
+    }
+    retVal= parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadMouseYFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(retVal),"MOUSEY"));
+    return instructions;
+}
+
+std::string ReadMouseYFunction::toString() {
+    return "getMouseX";
+}
+
+ReadMouseButtonFunction::ReadMouseButtonFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read port B. Too many parameters");
+    }
+    retVal= parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadMouseButtonFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(retVal),"MOUSEB"));
+    return instructions;
+}
+
+std::string ReadMouseButtonFunction::toString() {
+    return "getMouseButton";
+}
+
+ReadKeyboardFunction::ReadKeyboardFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read keyboard. Too many parameters");
+    }
+    retVal= parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadKeyboardFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(retVal),"KEY"));
+    return instructions;
+}
+
+std::string ReadKeyboardFunction::toString() {
+    return "getKeyboard";
+}

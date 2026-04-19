@@ -466,6 +466,11 @@ int main(const int argc, char* argv[]) {
         expansionFunctions.insert({"print",{[](const string &line) {return make_unique<PrintFunction>(line);}}});
         expansionFunctions.insert({"clear",{[](const string &line) {return make_unique<ClearFunction>(line);}}});
         expansionFunctions.insert({"line",{[](const string &line) {return make_unique<LineFunction>(line);}}});
+
+        returnExpansionFunctions.insert({"getMouseX",{[](const string &retVar, const string &line) {return make_unique<ReadMouseXFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getMouseY",{[](const string &retVar, const string &line) {return make_unique<ReadMouseYFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getMouseButton",{[](const string &retVar, const string &line) {return make_unique<ReadMouseButtonFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getKeyboard",{[](const string &retVar, const string &line) {return make_unique<ReadKeyboardFunction>(retVar,line);}}});
     } else {
         //load edison system specific
     }
