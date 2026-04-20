@@ -256,3 +256,11 @@ public:
     std::string toString() override;
 };
 
+class NegateHighLevelOperation: public HighLevelConstruct {
+    std::unique_ptr<DataType> data;
+public:
+    NegateHighLevelOperation(const std::string& var);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+}
+

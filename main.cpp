@@ -370,6 +370,8 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<IncrementHighLevelOperation>(tokens[0]);
         } else if (tokens[1] == "--") {
             return make_unique<DecrementHighLevelOperation>(tokens[0]);
+        } else if (tokens[1] == "~=") {
+            return make_unique<NegateHighLevelOperation>(tokens[0]);
         }
 
         if (tokens.size() < 3) {

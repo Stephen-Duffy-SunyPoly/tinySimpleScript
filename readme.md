@@ -139,7 +139,7 @@ myvar &= otherVar // and myvar with otherVar and store the result in myvar
 | var << val  | left shidt val by var bits  |
 | var ++      | increase var by 1           |
 | var --      | decrease var by 1           |
-|             |                             |
+| var ~=      | negate var                  |
 
 ## "compiler" usage:
 

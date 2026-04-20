@@ -841,3 +841,20 @@ std::vector<std::unique_ptr<PartialInstruction>> LeftShiftHighLevelOperation::ex
 std::string LeftShiftHighLevelOperation::toString() {
     return "left shift "+data->toString() +" by "+amount->toString();
 }
+
+NegateHighLevelOperation::NegateHighLevelOperation(const std::string &var) {
+    data = parseDataType(var);
+    if (!data->isVariable()) {
+        throw std::runtime_error("left shift operator left hand side must be a variable ");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> NegateHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<NegatePartialInstruction>(std::move(data)));
+    return instructions;
+}
+
+std::string NegateHighLevelOperation::toString() {
+    return "negate "+data->toString();
+}
