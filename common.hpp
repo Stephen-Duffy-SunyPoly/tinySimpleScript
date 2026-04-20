@@ -603,6 +603,46 @@ public:
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
+class RightShiftPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> data;
+    std::unique_ptr<DataType> amount;
+public:
+    RightShiftPartialInstruction(std::unique_ptr<DataType> data, std::unique_ptr<DataType> amount) : data(std::move(data)), amount(std::move(amount)) {}
+    std::string toString() override {
+        return "right shift " + data->toString() +" by "+amount->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn == 0 ) {
+            return data;
+        }
+        return amount;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class LeftShiftPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> data;
+    std::unique_ptr<DataType> amount;
+public:
+    LeftShiftPartialInstruction(std::unique_ptr<DataType> data, std::unique_ptr<DataType> amount) : data(std::move(data)), amount(std::move(amount)) {}
+    std::string toString() override {
+        return "left shift " + data->toString()+" by "+amount->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn == 0 ) {
+            return data;
+        }
+        return amount;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;

@@ -393,7 +393,11 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<OrHighLevelOperation>(tokens[0], tokens[2]);
         } else if (tokens[1] == "^=") {
             return make_unique<XorHighLevelOperation>(tokens[0], tokens[2]);
-        } else if (tokens[1] == "=") {
+        } else if (tokens[1] == ">>") {
+            return make_unique<RightShiftHighLevelOperation>(tokens[0], tokens[2]);
+        } else if (tokens[1] == "<<") {
+            return make_unique<LeftShiftHighLevelOperation>(tokens[0], tokens[2]);
+        }else if (tokens[1] == "=") {
             return make_unique<VariableAssignment>(tokens[0], tokens[2]);
         }
 

@@ -125,18 +125,21 @@ myvar &= otherVar // and myvar with otherVar and store the result in myvar
 
 **operations:**
 
-| Opperation  | Description             |
-|-------------|-------------------------|
-| var += val  | add val to var          |
-| var -= val  | subtract val from var   |
-| var *= val  | multiply val and var    |
-| var /= val  | divide val by var       |
-| var %= val  | mod val by var          |
-| var &= val  | bitwise and val and var |
-| var \|= val | bitwise or val and var  |
-| var ^= val  | bitwise xor val and var |
-| var ++      | increase var by 1       |
-| var --      | decrease var by 1       |
+| Opperation  | Description                 |
+|-------------|-----------------------------|
+| var += val  | add val to var              |
+| var -= val  | subtract val from var       |
+| var *= val  | multiply val and var        |
+| var /= val  | divide val by var           |
+| var %= val  | mod val by var              |
+| var &= val  | bitwise and val and var     |
+| var \|= val | bitwise or val and var      |
+| var ^= val  | bitwise xor val and var     |
+| var >> val  | right shift val by var bits |
+| var << val  | left shidt val by var bits  |
+| var ++      | increase var by 1           |
+| var --      | decrease var by 1           |
+|             |                             |
 
 ## "compiler" usage:
 

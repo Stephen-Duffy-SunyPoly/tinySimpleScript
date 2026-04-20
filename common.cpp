@@ -905,3 +905,44 @@ std::vector<std::unique_ptr<FinishedInstruction>> DirectLoadPartialInstruction::
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("lod",2,op1Reg,"["+loadFrom+"]",false));
     return finishedInstructions;
 }
+
+std::vector<std::unique_ptr<FinishedInstruction>> RightShiftPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!data->isVariable()) {
+        throw std::runtime_error("right shift operation left hand side must be a variable");
+    }
+    std::string op1Reg = resolver.resolve(data,finishedInstructions,true,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(data.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg = resolver.resolve(amount,finishedInstructions,false,false);;
+    std::string op2Comment;
+    if (amount->isVariable()) {
+        auto* vdt = dynamic_cast<VariableDataType*>(amount.get());
+        op2Comment = vdt->getVarName();
+    }
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("shf",2,op1Reg,op2Reg, "right shift "+op1comment+" by "+op2Comment));
+
+
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> LeftShiftPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!data->isVariable()) {
+        throw std::runtime_error("left shift operation left hand side must be a variable");
+    }
+    std::string op1Reg = resolver.resolve(data,finishedInstructions,true,false);
+    auto * o1v = dynamic_cast<VariableDataType*>(data.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg = resolver.resolve(amount,finishedInstructions,false,false);
+    std::string op2Comment;
+    if (amount->isVariable()) { // just for the comment at this point
+        auto* vdt = dynamic_cast<VariableDataType*>(amount.get());
+        op2Comment = vdt->getVarName();
+    }
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("neg",1,op2Reg,"",false,"negate "+op2Comment));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("shf",2,op1Reg,op2Reg, "left shift "+op1comment+" by "+op2Comment));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("neg",1,op2Reg,"",false,"put "+op2Comment+" back to what it is suposted to be so the register cache is not broken"));
+
+    return finishedInstructions;
+}

@@ -805,3 +805,39 @@ std::vector<std::unique_ptr<PartialInstruction>> SetPortBDirectionFunction::expa
 std::string SetPortBDirectionFunction::toString() {
     return "SetPortBDirection";
 }
+
+RightShiftHighLevelOperation::RightShiftHighLevelOperation(const std::string &var, const std::string &by) {
+    data = parseDataType(var);
+    if (!data->isVariable()) {
+        throw std::runtime_error("right shift opprator left hand side must be a variable ");
+    }
+    amount = parseDataType(by);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> RightShiftHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<RightShiftPartialInstruction>(std::move(data),std::move(amount)));
+    return instructions;
+}
+
+std::string RightShiftHighLevelOperation::toString() {
+    return "right shift "+data->toString() +" by "+amount->toString();
+}
+
+LeftShiftHighLevelOperation::LeftShiftHighLevelOperation(const std::string &var, const std::string &by) {
+    data = parseDataType(var);
+    if (!data->isVariable()) {
+        throw std::runtime_error("left shift operator left hand side must be a variable ");
+    }
+    amount = parseDataType(by);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> LeftShiftHighLevelOperation::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<LeftShiftPartialInstruction>(std::move(data),std::move(amount)));
+    return instructions;
+}
+
+std::string LeftShiftHighLevelOperation::toString() {
+    return "left shift "+data->toString() +" by "+amount->toString();
+}

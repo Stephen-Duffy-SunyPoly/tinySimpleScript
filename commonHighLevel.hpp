@@ -237,3 +237,22 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class RightShiftHighLevelOperation: public HighLevelConstruct {
+    std::unique_ptr<DataType> data;
+    std::unique_ptr<DataType> amount;
+public:
+    RightShiftHighLevelOperation(const std::string& var, const std::string &by);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class LeftShiftHighLevelOperation: public HighLevelConstruct {
+    std::unique_ptr<DataType> data;
+    std::unique_ptr<DataType> amount;
+public:
+    LeftShiftHighLevelOperation(const std::string& var, const std::string &by);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
