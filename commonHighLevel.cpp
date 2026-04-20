@@ -858,3 +858,70 @@ std::vector<std::unique_ptr<PartialInstruction>> NegateHighLevelOperation::expan
 std::string NegateHighLevelOperation::toString() {
     return "negate "+data->toString();
 }
+
+ResetCycleCountFunction::ResetCycleCountFunction(const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type reset cycle count Too many parameters");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ResetCycleCountFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("CYCLE_CNT_RESET",std::make_unique<ZeroDataType>()));
+    return instructions;
+}
+
+std::string ResetCycleCountFunction::toString() {
+    return "Reset Cycle Count";
+}
+
+ResetWallTimeFunction::ResetWallTimeFunction(const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type reset wall time. Too many parameters");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ResetWallTimeFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("WALL_TIME_RESET",std::make_unique<ZeroDataType>()));
+    return instructions;
+}
+
+std::string ResetWallTimeFunction::toString() {
+    return "Reset Wall Time";
+}
+
+GetCycleCountFunction::GetCycleCountFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type get cycle count. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> GetCycleCountFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"CYCLE_CNT"));
+    return instructions;
+}
+
+std::string GetCycleCountFunction::toString() {
+    return "Get Cycle Count";
+}
+
+GetWallTimeFunction::GetWallTimeFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type get wall time. Too many parameters");
+    }
+    returnTo = parseDataType(retVar);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> GetWallTimeFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnTo),"WALL_TIME"));
+    return instructions;
+}
+
+std::string GetWallTimeFunction::toString() {
+    return "Get wall time";
+}
+

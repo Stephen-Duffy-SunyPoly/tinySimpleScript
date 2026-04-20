@@ -12,12 +12,16 @@
 using namespace std;
 
 string systemConsts = "; TeenyAT Constants\n"
-".const PORT_A_DIR   0x8000\n"
-".const PORT_B_DIR   0x8001\n"
-".const PORT_A       0x8002\n"
-".const PORT_B       0x8003\n"
-".const RAND         0x8010\n"
-".const RAND_BITS    0x8011\n";
+".const PORT_A_DIR      0x8000\n"
+".const PORT_B_DIR      0x8001\n"
+".const PORT_A          0x8002\n"
+".const PORT_B          0x8003\n"
+".const RAND            0x8010\n"
+".const RAND_BITS       0x8011\n"
+".const CYCLE_CNT       0x8090\n"
+".const CYCLE_CNT_RESET 0x8091\n"
+".const WALL_TIME       0x8094\n"
+".const WALL_TIME_RESET 0x8095\n";
 
 string lcdConsts = "; LCD Peripherals\n"
 ".const LIVESCREEN 0x9000\n"
@@ -453,12 +457,15 @@ int main(const int argc, char* argv[]) {
     expansionFunctions.insert({"setPortB",{[](const string &line) {return make_unique<SetPortBFunction>(line);}}});
     expansionFunctions.insert({"setPortADirection",{[](const string &line) {return make_unique<SetPortADirectionFunction>(line);}}});
     expansionFunctions.insert({"setPortBDirection",{[](const string &line) {return make_unique<SetPortBDirectionFunction>(line);}}});
-
+    expansionFunctions.insert({"resetCycleCount",{[](const string &line) {return make_unique<ResetCycleCountFunction>(line);}}});
+    expansionFunctions.insert({"resetWallTime",{[](const string &line) {return make_unique<ResetWallTimeFunction>(line);}}});
 
     returnExpansionFunctions.insert({"random",{[](const string &retVar, const string &line) {return make_unique<RandFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"randomBits",{[](const string &retVar, const string &line) {return make_unique<RandBitsFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"readPortA",{[](const string &retVar, const string &line) {return make_unique<ReadPortAFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"readPortB",{[](const string &retVar, const string &line) {return make_unique<ReadPortBFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"getCycleCount",{[](const string &retVar, const string &line) {return make_unique<GetCycleCountFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"getWallTime",{[](const string &retVar, const string &line) {return make_unique<GetWallTimeFunction>(retVar,line);}}});
 
     //load the langue constructs:
     if (LCDSystem) {

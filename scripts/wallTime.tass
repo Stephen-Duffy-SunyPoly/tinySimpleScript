@@ -1,0 +1,13 @@
+//this is testing a poorly document feature of the Teeny AT system
+//that being the wall time device
+//this device gets the number of 1/16 seconds since the start of the program
+
+gvar saveTime
+gvar cycle
+
+do {
+    saveTime = getWallTime()
+    cycle = getCycleCount()//also get the cycle count just to show it is larger
+    print(saveTime)
+    print(cycle)
+} while( 0 == 0)

@@ -17,6 +17,10 @@ If you are looking for a real programing language / compiler to use with this ar
 | val = readPortB()          | read the value of GPIO port B                |
 | val = random()             | get a random positive number                 |
 | val = randomBits()         | get a random bit pattern                     |
+| val = getCycleCount()      | get the number of cycles since reset         |
+| cal = getWallTime()        | get the number of 1/16 seconds since reset   |
+| resetCycleCount()          | reset the cycle count                        |
+| resetWallTime()            | reset the wall time                          |
 | trap()                     | stop executing the program at this funcion   |
 
 

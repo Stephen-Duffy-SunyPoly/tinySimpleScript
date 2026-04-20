@@ -263,3 +263,33 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class ResetCycleCountFunction: public HighLevelConstruct {
+public:
+    ResetCycleCountFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ResetWallTimeFunction: public HighLevelConstruct {
+public:
+    ResetWallTimeFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class GetCycleCountFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    GetCycleCountFunction(const std::string &retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class GetWallTimeFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnTo;
+public:
+    GetWallTimeFunction(const std::string& retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
