@@ -1,0 +1,37 @@
+//this file crates a rectangle on the screen that gitters back and forth in the center
+
+//corner values
+gvar left = 20
+gvar right = 40
+gvar top = 20
+gvar bottom = 40
+setStroke(0) //lets not worry about the stroke
+
+do {
+    //clear the screen with black
+    fill(0)
+    clear()
+    fill(1500)
+    lvar randV //place to store our random values
+    //for each corner value apply a random bit of movement
+    //left
+    randV = randomBits()
+    randV %= 3
+    left += randV
+    //right
+    randV = randomBits()
+    randV %= 3
+    right += randV
+    //top
+    randV = randomBits()
+    randV %= 3
+    top += randV
+    //bottom
+    randV = randomBits()
+    randV %= 3
+    bottom += randV
+    //draw the rectangle to the screen
+    rect(left,top,right,bottom)
+    update()
+    delay(1000)
+} while(0 == 0)

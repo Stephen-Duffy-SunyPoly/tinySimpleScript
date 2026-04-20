@@ -262,5 +262,4 @@ public:
     NegateHighLevelOperation(const std::string& var);
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
-}
-
+};
