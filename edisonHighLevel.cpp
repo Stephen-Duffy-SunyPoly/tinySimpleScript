@@ -566,3 +566,91 @@ std::string E_GetCursorPosFunction::toString() {
     return "get cursor position";
 }
 
+E_SetBuzzerLeftFunction::E_SetBuzzerLeftFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type set buzzer left. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function set buzzer left. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function set buzzer left. Missing param 1");
+    }
+    frequency = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> E_SetBuzzerLeftFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[BUZZER_LEFT]",std::move(frequency)));
+    return instructions;
+}
+
+std::string E_SetBuzzerLeftFunction::toString() {
+    return "set buzzer left to "+frequency->toString();
+}
+
+E_SetBuzzerRightFunction::E_SetBuzzerRightFunction(const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type set buzzer right. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function set buzzer right. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function set buzzer right. Missing param 1");
+    }
+    frequency = parseDataType(param1);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> E_SetBuzzerRightFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[BUZZER_RIGHT]",std::move(frequency)));
+    return instructions;
+}
+
+std::string E_SetBuzzerRightFunction::toString() {
+    return "set buzzer right to "+frequency->toString();
+}
+
+E_GetFaderLeftFunction::E_GetFaderLeftFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type get fader left. Too many parameters");
+    }
+    returnValue = parseDataType(retVar);
+    if (!returnValue->isVariable()) {
+        throw std::runtime_error("Syntax error: functions can only return values to variables");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> E_GetFaderLeftFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnValue),"FADER_LEFT"));
+    return instructions;
+}
+
+std::string E_GetFaderLeftFunction::toString() {
+    return "get fader left";
+}
+
+E_GetFaderRightFunction::E_GetFaderRightFunction(const std::string &retVar, const std::string &line) {
+    if (!line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type get fader left. Too many parameters");
+    }
+    returnValue = parseDataType(retVar);
+    if (!returnValue->isVariable()) {
+        throw std::runtime_error("Syntax error: functions can only return values to variables");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> E_GetFaderRightFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectLoadPartialInstruction>(std::move(returnValue),"FADER_RIGHT"));
+    return instructions;
+}
+
+std::string E_GetFaderRightFunction::toString() {
+    return "get fader right";
+}
+

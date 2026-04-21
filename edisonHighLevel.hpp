@@ -200,3 +200,35 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class E_SetBuzzerLeftFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> frequency;
+public:
+    explicit E_SetBuzzerLeftFunction(const std::string &line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class E_SetBuzzerRightFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> frequency;
+public:
+    explicit E_SetBuzzerRightFunction(const std::string &line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class E_GetFaderLeftFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnValue;
+public:
+    explicit E_GetFaderLeftFunction(const std::string &retVar, const std::string &line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class E_GetFaderRightFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> returnValue;
+public:
+    explicit E_GetFaderRightFunction(const std::string &retVar, const std::string &line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

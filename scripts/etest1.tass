@@ -2,8 +2,39 @@
 
 setPortADirection(65535)
 
+gvar tome
+
 print(64)
 
 print("Hello world")
+
+moveCursorLeft(1)
+moveCursorRight(1)
+moveCursorUp(1)
+moveCursorDown(1)
+moveCursorLeftWrap(1)
+moveCursorRightWrap(1)
+moveCursorUpWrap(1)
+moveCursorDownWrap(1)
+setCursorX(1)
+setCursorY(1)
+setCursorPos(0)
+setBuzzerLeft(0)
+setBuzzerRight(0)
+
+tome = readCursor()
+tome = readLeft()
+tome = readRight()
+tome = readUp()
+tome = readDown()
+tome = readLeftWrap()
+tome = readRightWrap()
+tome = readUpWrap()
+tome = readDownWrap()
+tome = getCursorX()
+tome = getCursorY()
+tome = getCursorPos()
+tome = getFaderLeft()
+tome = getFaderRight()
 
 trap()

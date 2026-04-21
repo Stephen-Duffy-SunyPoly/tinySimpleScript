@@ -530,6 +530,8 @@ int main(const int argc, char* argv[]) {
         expansionFunctions.insert({"setCursorX",{[](const string &line) {return make_unique<E_SetCursorXFunction>(line);}}});
         expansionFunctions.insert({"setCursorY",{[](const string &line) {return make_unique<E_SetCursorYFunction>(line);}}});
         expansionFunctions.insert({"setCursorPos",{[](const string &line) {return make_unique<E_SetCursorPosFunction>(line);}}});
+        expansionFunctions.insert({"setBuzzerLeft",{[](const string &line) {return make_unique<E_SetBuzzerLeftFunction>(line);}}});
+        expansionFunctions.insert({"setBuzzerRight",{[](const string &line) {return make_unique<E_SetBuzzerRightFunction>(line);}}});
 
 
 
@@ -545,6 +547,8 @@ int main(const int argc, char* argv[]) {
         returnExpansionFunctions.insert({"getCursorX",{[](const string &retVar,const string &line){return make_unique<E_ReadCursorXFunction>(retVar,line);}}});
         returnExpansionFunctions.insert({"getCursorY",{[](const string &retVar,const string &line){return make_unique<E_ReadCursorYFunction>(retVar,line);}}});
         returnExpansionFunctions.insert({"getCursorPos",{[](const string &retVar,const string &line){return make_unique<E_GetCursorPosFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getFaderLeft",{[](const string &retVar,const string &line){return make_unique<E_GetFaderLeftFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getFaderRight",{[](const string &retVar,const string &line){return make_unique<E_GetFaderRightFunction>(retVar,line);}}});
 
 
 

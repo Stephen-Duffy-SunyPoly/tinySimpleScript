@@ -21,7 +21,7 @@ If you are looking for a real programing language / compiler to use with this ar
 | cal = getWallTime()        | get the number of 1/16 seconds since reset   |
 | resetCycleCount()          | reset the cycle count                        |
 | resetWallTime()            | reset the wall time                          |
-| trap()                     | stop executing the program at this funcion   |
+| trap()                     | stop executing the program at this function  |
 
 
 #### LCD System 
@@ -34,7 +34,7 @@ If you are looking for a real programing language / compiler to use with this ar
 | stroke(c)              | sets the stroke color                       |
 | setFill(b)             | set if there should be fill                 |
 | setStroke(b)           | set if there should be stroke               |
-| clear()                | draws a rectablge the size of the screen    |
+| clear()                | draws a rectangle the size of the screen    |
 | point(x,y)             | draws a single pixel                        |
 | print(v)               | prints a value to the terminal              |
 | line(x1,y1,x2,y2)      | draw a line between the points              |
@@ -49,36 +49,36 @@ If you do not set stroke and fill initially, they will be whatever stroke and fi
 
 | function               | description                                                                                   |
 |------------------------|-----------------------------------------------------------------------------------------------|
-| clear()                | clears the LCD screan                                                                         |
-| print(char)            | pritns a charater to the cursor position on the LCD                                           |
+| clear()                | clears the LCD screen                                                                         |
+| print(char)            | prints a character to the cursor position on the LCD                                          |
 | print("string")        | prints a string literal to the cursor position on the LCD                                     |
-| var = readCursor()     | read the character at the current cursor position                                             |
 | moveCursorLeft(x)      | move the cursor x positions to the left                                                       |
-| var = readLeft()       | read a char from the LCD to the left of the cursor                                            |
 | moveCursorRight(x)     | move the curor x positions to the right                                                       |
-| var = readRight()      | read a char from the LCD to the right of the cursor                                           |
-| moveCursoUp(x)         | move the curor x positions up                                                                 |
-| var = readUp()         | read a char from the LCD to the up from the cursor                                            |
+| moveCursorUp(x)        | move the curor x positions up                                                                 |
 | moveCursorDown(x)      | move the curor x positions down                                                               |
-| var = readDown()       | read a char from the LCD to the fown from the cursor                                          |
 | moveCursorLeftWrap(x)  | move the cursor x positions to the left wrapping if on the edge                               |
-| var = readLeftWrap()   | read a char from the LCD to the left of the cursor wrapping if on the edge                    |
 | moveCursorRightWrap(x) | move the curor x positions to the right wrapping if on the edge                               |
-| var = readRightWrap()  | read a char from the LCD to the right of the cursor wrapping if on the edge                   |
-| moveCursoUpWrap(x)     | move the curor x positions up wrapping if on the edge                                         |
-| var = readUpWrap()     | read a char from the LCD to the up from the cursor wrapping if on the edge                    |
+| moveCursorUpWrap(x)    | move the curor x positions up wrapping if on the edge                                         |
 | moveCursorDownWrap(x)  | move the curor x positions down wrapping if on the edge                                       |
-| var = readDowWrapn()   | read a char from the LCD to the fown from the cursor wrapping if on the edge                  |
 | setCursorX(x)          | set the x position of the cursor on the LCD                                                   |
 | setCursorY(y)          | set the y position of the cursor on the LCD                                                   |
+| setCursorPos(xy)       | set the position of the cursor on the LCD using packed bytes where byte 1 = X and byte 0 = y  |
+| setBuzzerLeft(f)       | set the frequecny played by buzzer left. Bit 15 sets if a triangle wave is generated          |
+| setBuzzerRight(f)      | set the frequecny played by buzzer right. Bit 15 sets if a triangle wave is generated         |
+| var = readCursor()     | read the character at the current cursor position                                             |
+| var = readLeft()       | read a char from the LCD to the left of the cursor                                            |
+| var = readRight()      | read a char from the LCD to the right of the cursor                                           |
+| var = readUp()         | read a char from the LCD to the up from the cursor                                            |
+| var = readDown()       | read a char from the LCD to the fown from the cursor                                          |
+| var = readLeftWrap()   | read a char from the LCD to the left of the cursor wrapping if on the edge                    |
+| var = readRightWrap()  | read a char from the LCD to the right of the cursor wrapping if on the edge                   |
+| var = readUpWrap()     | read a char from the LCD to the up from the cursor wrapping if on the edge                    |
+| var = readDownWrap()   | read a char from the LCD to the fown from the cursor wrapping if on the edge                  |
 | var = getCursorX()     | get the X position of the cursor on the LCD                                                   |
 | var = getCursorY()     | get the Y position of the cursor on the LCD                                                   |
-| setCursorPos(xy)       | set the position of the cursor on the LCD using packed bytes where byte 1 = X and byte 0 = y  |
 | var = getCursorPos()   | get the position of the cursor on the LCD in pack byte format where byte 1 = X and byte 0 = y |
-|                        |                                                                                               |
-|                        |                                                                                               |
-|                        |                                                                                               |
-|                        |                                                                                               |
+| var = getFaderLeft()   | get the value of the left fader                                                               |
+| var = getFaderRight()  | get the value of the right fader                                                              |
 
 
 ## Language specifics
