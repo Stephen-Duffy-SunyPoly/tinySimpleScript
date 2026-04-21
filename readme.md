@@ -155,7 +155,7 @@ tinySimplescript ./program.tass
 **flags:**  
 `--tnasm <exe path>` supply the path of the assembler on your system. When present after compilation has finished, the generated assembly file will be automatically assembled info a valid binary.  
 `--edison` Build a program for the edison system. Compiles with functions specific to the edison system and not the LCD system.  
-`--nosys` Builds a program for a generic Teeny AT system with no system specific functions available. (not yet implemented)
+`--nosys` Builds a program for a generic Teeny AT system with no system specific functions available.
 
 
 ## Example programs

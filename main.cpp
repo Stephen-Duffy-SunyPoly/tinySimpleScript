@@ -44,6 +44,25 @@ string lcdConsts = "; LCD Peripherals\n"
 ".const TERM 0xFFFF\n"
 ".const KEY 0xFFFE";
 
+string edisonConsts = "; Edison Constants\n"
+".const LCD_CURSOR           0xA000\n"
+".const LCD_CLEAR_SCREEN     0xA001\n"
+".const LCD_MOVE_LEFT        0xA002\n"
+".const LCD_MOVE_RIGHT       0xA003\n"
+".const LCD_MOVE_UP          0xA004\n"
+".const LCD_MOVE_DOWN        0xA005\n"
+".const LCD_MOVE_LEFT_WRAP   0xA006\n"
+".const LCD_MOVE_RIGHT_WRAP  0xA007\n"
+".const LCD_MOVE_UP_WRAP     0xA008\n"
+".const LCD_MOVE_DOWN_WRAP   0xA009\n"
+".const LCD_CURSOR_X         0xA00A\n"
+".const LCD_CURSOR_Y         0xA00B\n"
+".const LCD_CURSOR_XY        0xA00C\n"
+".const BUZZER_LEFT          0xA010\n"
+".const BUZZER_RIGHT         0xA011\n"
+".const FADER_LEFT           0xA020\n"
+".const FADER_RIGHT          0xA021";
+
 const vector<string> reservedWords = {//note to self, add other opperators to this list
     "PORT_A_DIR", "PORT_B_DIR", "PORT_A", "PORT_B","RAND","RAND_BITS","LIVESCREEN","UPDATESCREEN","X1","Y1","X2","Y2","STROKE","FILL","DRAWFILL","DRAWSTROKE",
     "UPDATE", "RECT", "LINE", "POINT", "MOUSEX", "MOUSEY", "MOUSEB", "TERM", "KEY", "gvar", "lvar","=", "function", "do", "while", "if", "else", "return"
@@ -66,6 +85,7 @@ const vector<string> reservedWords = {//note to self, add other opperators to th
 
 
 bool LCDSystem = true;
+bool edisonSystem = false;
 
 //description of the high level block for parsing
 struct HighLevelFunctionDescription {
@@ -438,10 +458,20 @@ int main(const int argc, char* argv[]) {
                 assembler = args[++i];
                 assemble = true;
                 i++;
+                continue;
             } else {
                 cerr << "Expected file path to tnasm but got nothing"<<endl;
                 return EXIT_FAILURE;
             }
+        }
+        if (args[i] == "--edison") {
+            LCDSystem = false;
+            edisonSystem = true;
+            continue;
+        }
+        if (args[i] == "--nosys") {
+            LCDSystem = false;
+            edisonSystem = false;
         }
     }
 
@@ -484,7 +514,7 @@ int main(const int argc, char* argv[]) {
         returnExpansionFunctions.insert({"getMouseY",{[](const string &retVar, const string &line) {return make_unique<ReadMouseYFunction>(retVar,line);}}});
         returnExpansionFunctions.insert({"getMouseButton",{[](const string &retVar, const string &line) {return make_unique<ReadMouseButtonFunction>(retVar,line);}}});
         returnExpansionFunctions.insert({"getKeyboard",{[](const string &retVar, const string &line) {return make_unique<ReadKeyboardFunction>(retVar,line);}}});
-    } else {
+    } else if (edisonSystem){
         //load edison system specific
     }
 
@@ -522,7 +552,6 @@ int main(const int argc, char* argv[]) {
     }
 
     //variable assignment
-    //TODO
     //loop through everything and pull out the variable declarations  and make them proper memory addresses
     //check all instructions to make sure all of their variables actually exist / resolve them
     try {
@@ -596,9 +625,11 @@ int main(const int argc, char* argv[]) {
 
     ofstream assemblyOut(outFileName+".asm");
 
-    assemblyOut << systemConsts<<endl<<endl;
+    assemblyOut << systemConsts << endl << endl;
     if (LCDSystem) {
-        assemblyOut << lcdConsts << endl<<endl;
+        assemblyOut << lcdConsts << endl << endl;
+    } else if (edisonSystem) {
+        assemblyOut << edisonConsts << endl << endl;
     }
 
     int globalVarOffset = static_cast<int>(finishedInstructions.size())*2;//sooooo apparently your code lives at 0 so we need to start the heap away from there, well just image each instruction is 2 words and go from there
@@ -619,9 +650,14 @@ int main(const int argc, char* argv[]) {
     if (assemble) {
         try {
             cout << "assembling generated assembly" << endl;
-            auto tnasm = subprocess::Popen({assembler,outFileName+".asm"},subprocess::output{subprocess::PIPE});
+            auto tnasm = subprocess::Popen({assembler,outFileName+".asm"},subprocess::output{subprocess::PIPE}, subprocess::error{subprocess::STDOUT});
             auto outputBuffer = tnasm.communicate().first;
             cout << outputBuffer.buf.data() << endl;
+
+            if (tnasm.retcode() != 0) {
+                cerr << "Assembling Failed!     Run the assembler separately to get more details" << endl;
+            }
+
         } catch (exception& e) {
             cout.flush();
             cerr << "Error while running assembler: " << e.what() << endl;
