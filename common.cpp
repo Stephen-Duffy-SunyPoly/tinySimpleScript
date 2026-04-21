@@ -712,6 +712,10 @@ int BlockPartialInstruction::numVars() {
     for (auto & inst:internalInstructions) {
         total += inst->numVars();
     }
+    if (endLoopCondition != nullptr) {
+        total += endLoopCondition->numVars();
+
+    }
     if (returnValue != nullptr) {
         total ++;
     }
@@ -760,6 +764,16 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
     if (returningValue) {
         returnValueReg = blockResolver.resolve(returnValue,inProgressInstructions,false,false);
     }
+
+    if (endLoopCondition != nullptr) {//if this is a loop and there is a condition for the end, resolve its vars before ant register backups
+        //save all used registers
+        blockResolver.saveAllDirtyRegisters(inProgressInstructions);
+        std::vector<std::unique_ptr<FinishedInstruction>> tmp = endLoopCondition->assemble(blockResolver);
+        for (auto &instInfo : tmp) {
+            inProgressInstructions.emplace_back(std::move(instInfo));
+        }
+    }
+
     //add label if label before register backup
     if (!backupPreLabel) {
         finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
@@ -775,14 +789,6 @@ std::vector<std::unique_ptr<FinishedInstruction>> BlockPartialInstruction::assem
         finalInstructions.emplace_back(std::make_unique<FinishedInstruction>(name,0,"","",true));
     }
 
-    if (endLoopCondition != nullptr) {
-        //save all used registers
-        blockResolver.saveAllDirtyRegisters(inProgressInstructions);
-        std::vector<std::unique_ptr<FinishedInstruction>> tmp = endLoopCondition->assemble(blockResolver);
-        for (auto &instInfo : tmp) {
-            inProgressInstructions.emplace_back(std::move(instInfo));
-        }
-    }
     //account for params stack offset
     blockResolver.correctExtraStackVars(numRegistersUsed);
     //stack var are already pushed at this point by the system in the level above this
@@ -907,7 +913,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPushPartialInstruction::a
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
-        op1Reg = resolver.resolve(val,finishedInstructions,false,existingStackOffset);
+        op1Reg = resolver.resolve(val,finishedInstructions,false,false,existingStackOffset);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
@@ -919,7 +925,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> StackPopPartialInstruction::as
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string op1Reg;// = resolver.resolve(from,finishedInstructions,false);
     if (val->isVariable()) {//if it is a variable the resolve it
-        op1Reg = resolver.resolve(val,finishedInstructions,true,existingStackOffset);
+        op1Reg = resolver.resolve(val,finishedInstructions,true,false,existingStackOffset);
     } else {//if it is not a variable it does not need to be resolved for this
         op1Reg = val->asAsm();
     }
