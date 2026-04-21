@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "commonHighLevel.hpp"
 #include "lcdHighLevel.hpp"
+#include "edisonHighLevel.hpp"
 #include <cpp-subprocess/subprocess.hpp>
 
 using namespace std;
@@ -516,6 +517,8 @@ int main(const int argc, char* argv[]) {
         returnExpansionFunctions.insert({"getKeyboard",{[](const string &retVar, const string &line) {return make_unique<ReadKeyboardFunction>(retVar,line);}}});
     } else if (edisonSystem){
         //load edison system specific
+        expansionFunctions.insert({"clear",{[](const string &line) {return make_unique<E_LCDClearFunction>(line);}}});
+        expansionFunctions.insert({"print",{[](const string &line) {return make_unique<E_LCDPrintFunction>(line);}}});
     }
 
     vector<unique_ptr<HighLevelConstruct>> highLevelBlocks;

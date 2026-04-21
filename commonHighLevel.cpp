@@ -726,7 +726,7 @@ SetPortAFunction::SetPortAFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> SetPortAFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_A",std::move(setTo)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[PORT_A]",std::move(setTo)));
     return instructions;
 }
 
@@ -750,7 +750,7 @@ SetPortBFunction::SetPortBFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> SetPortBFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_B",std::move(setTo)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[PORT_B]",std::move(setTo)));
     return instructions;
 }
 
@@ -774,7 +774,7 @@ SetPortADirectionFunction::SetPortADirectionFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> SetPortADirectionFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_A_DIR",std::move(setTo)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[PORT_A_DIR]",std::move(setTo)));
     return instructions;
 }
 
@@ -798,7 +798,7 @@ SetPortBDirectionFunction::SetPortBDirectionFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> SetPortBDirectionFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("PORT_B_DIR",std::move(setTo)));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[PORT_B_DIR]",std::move(setTo)));
     return instructions;
 }
 
@@ -867,7 +867,7 @@ ResetCycleCountFunction::ResetCycleCountFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> ResetCycleCountFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("CYCLE_CNT_RESET",std::make_unique<ZeroDataType>()));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[CYCLE_CNT_RESET]",std::make_unique<ZeroDataType>()));
     return instructions;
 }
 
@@ -883,7 +883,7 @@ ResetWallTimeFunction::ResetWallTimeFunction(const std::string &line) {
 
 std::vector<std::unique_ptr<PartialInstruction>> ResetWallTimeFunction::expand() {
     std::vector<std::unique_ptr<PartialInstruction>> instructions;
-    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("WALL_TIME_RESET",std::make_unique<ZeroDataType>()));
+    instructions.emplace_back(std::make_unique<DirectStorPartialInstruction>("[WALL_TIME_RESET]",std::make_unique<ZeroDataType>()));
     return instructions;
 }
 

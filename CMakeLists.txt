@@ -19,6 +19,8 @@ add_executable(tinySimplescript main.cpp
         lcdHighLevel.hpp
         commonHighLevel.cpp
         commonHighLevel.hpp
-        common.cpp)
+        common.cpp
+        edisonHighLevel.cpp
+        edisonHighLevel.hpp)
 
 target_link_libraries(tinySimplescript PRIVATE cpp-subprocess::subprocess)

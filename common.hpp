@@ -196,6 +196,7 @@ public:
     void flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions) const;
     void correctExtraStackVars(int numRegsUsed) const;
     void saveAllDirtyRegisters(std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions);
+    void forceUpdateRegister(std::string &reg, std::vector<std::unique_ptr<FinishedInstruction>>& finishedInstructions, std::unique_ptr<DataType>& data);
 };
 
 
@@ -639,6 +640,24 @@ public:
             return data;
         }
         return amount;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class PrintStringPartialInstruction : public PartialInstruction {
+    std::string toPrint;
+    std::string ariteAddr;
+    std::unique_ptr<DataType> ignore;
+public:
+    PrintStringPartialInstruction(std::string toPrint, std::string ariteAddr): toPrint(std::move(toPrint)), ariteAddr(std::move(ariteAddr)) {}
+    std::string toString() override {
+        return "print " + toPrint;
+    }
+    int numVars() override {
+        return 0;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        return ignore;
     }
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };

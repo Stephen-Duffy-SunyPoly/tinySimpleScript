@@ -340,6 +340,66 @@ void RegisterResolver::saveAllDirtyRegisters(std::vector<std::unique_ptr<Finishe
     }
 }
 
+void RegisterResolver::forceUpdateRegister(std::string &reg,std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions, std::unique_ptr<DataType> &data) {
+    int regNum = reg[1] - 'A';
+    bool lookForVar = data->isVariable();
+    if (registers[regNum].dirty) {//save this register if necessary
+        bool stack = false;
+        for (auto& var : localVars) {
+            if (var== registers[regNum].varName) {
+                stack = true;
+                break;
+            }
+        }
+        if (!stack) {
+            for (auto& var : paramVars) {
+                if (var == registers[regNum].varName) {
+                    stack = true;
+                    break;
+                }
+            }
+        }
+        if (stack) {
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[regNum].imValue)+"]",reg,"save "+registers[regNum].varName+" to memory"));
+
+            // std::cout << registers[lruIndex].imValue << std::endl;
+            if (registers[regNum].imValue >= localVars.size()) {
+                FinishedInstruction * endPtr = finishedInstructions.back().get();
+                partiallyResolvedStackVars.push_back(endPtr);//another microslop hallucinated error
+            }
+        } else {
+            if (registers[regNum].varName.empty()) {
+                throw std::runtime_error("Attempted to store empty global var!");
+            }
+            finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[regNum].varName+"]",reg,"save "+registers[regNum].varName+" to memory"));
+        }
+    } //end of save dirty
+    int imValue = 0;//tha value of an immediate but also the offset for a stack var
+    std::string varName;
+    if (lookForVar) {
+        VariableDataType &vdt = *dynamic_cast<VariableDataType*>(data.get());
+        varName = vdt.getVarName();
+        imValue = vdt.getOffset();
+    } else {
+        ImmediateDataType &idt = *dynamic_cast<ImmediateDataType*>(data.get());
+        imValue = idt.getValue();
+    }
+    const std::string loadCommand = lookForVar ? "lod": "set";
+    std::string commentName = lookForVar ? varName:std::to_string(imValue);
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>(loadCommand,2,reg,data->asAsm(),"load "+commentName +" into "+ reg));
+
+    //check if it is extra stack and store the index for later correction
+    if (lookForVar) {
+        for (auto& var : paramVars) {
+            if (var == varName) {//if it is an extra stack var
+                FinishedInstruction * endIndex = finishedInstructions.back().get();
+                partiallyResolvedStackVars.push_back(endIndex);// add this instruction to the list
+                break;
+            }
+        }
+    }
+}
+
 std::vector<std::unique_ptr<FinishedInstruction>> DirectStorPartialInstruction::assemble(RegisterResolver &resolver) {
     std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
     std::string inputReg = resolver.resolve(value,finishedInstructions,false,false);
@@ -944,5 +1004,27 @@ std::vector<std::unique_ptr<FinishedInstruction>> LeftShiftPartialInstruction::a
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("shf",2,op1Reg,op2Reg, "left shift "+op1comment+" by "+op2Comment));
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("neg",1,op2Reg,"",false,"put "+op2Comment+" back to what it is suposted to be so the register cache is not broken"));
 
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> PrintStringPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    std::unique_ptr<DataType> currentImmediate = std::make_unique<ImmediateDataType>(toPrint[0]);
+    std::string comment = "print X";
+    comment[6] = toPrint[0];
+    std::string useReg = resolver.resolve(currentImmediate,finishedInstructions,false,false);
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+ariteAddr+"]",useReg,false,comment));
+    for (size_t i = 1; i < toPrint.size(); i++) {
+        //update the cache with the value
+        char strChar = toPrint[i];
+        comment = "print X";
+        comment[6] = strChar;
+        currentImmediate = std::make_unique<ImmediateDataType>(strChar);
+        //resolve
+        if (strChar != toPrint[i-1]) {//only update what is in the register if the current char is different from the last one
+            resolver.forceUpdateRegister(useReg,finishedInstructions,currentImmediate);
+        }
+        finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+ariteAddr+"]",useReg,false,comment));
+    }
     return finishedInstructions;
 }

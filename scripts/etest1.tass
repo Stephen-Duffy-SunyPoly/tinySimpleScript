@@ -1,0 +1,9 @@
+//first test file for the edison system
+
+setPortADirection(65535)
+
+print(64)
+
+print("Hello world")
+
+trap()
