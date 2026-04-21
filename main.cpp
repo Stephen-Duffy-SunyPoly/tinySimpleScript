@@ -519,6 +519,35 @@ int main(const int argc, char* argv[]) {
         //load edison system specific
         expansionFunctions.insert({"clear",{[](const string &line) {return make_unique<E_LCDClearFunction>(line);}}});
         expansionFunctions.insert({"print",{[](const string &line) {return make_unique<E_LCDPrintFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorLeft",{[](const string &line) {return make_unique<E_MoveCursorLeftFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorRight",{[](const string &line) {return make_unique<E_MoveCursorRightFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorUp",{[](const string &line) {return make_unique<E_MoveCursorUpFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorDown",{[](const string &line) {return make_unique<E_MoveCursorDownFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorLeftWrap",{[](const string &line) {return make_unique<E_MoveCursorLeftWrapFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorRightWrap",{[](const string &line) {return make_unique<E_MoveCursorRightWrapFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorUpWrap",{[](const string &line) {return make_unique<E_MoveCursorUpWrapFunction>(line);}}});
+        expansionFunctions.insert({"moveCursorDownWrap",{[](const string &line) {return make_unique<E_MoveCursorDownWrapFunction>(line);}}});
+        expansionFunctions.insert({"setCursorX",{[](const string &line) {return make_unique<E_SetCursorXFunction>(line);}}});
+        expansionFunctions.insert({"setCursorY",{[](const string &line) {return make_unique<E_SetCursorYFunction>(line);}}});
+        expansionFunctions.insert({"setCursorPos",{[](const string &line) {return make_unique<E_SetCursorPosFunction>(line);}}});
+
+
+
+        returnExpansionFunctions.insert({"readCursor",{[](const string &retVar, const string &line){return make_unique<E_ReadCursorFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readLeft",{[](const string &retVar, const string &line){return make_unique<E_ReadLeftFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readRight",{[](const string &retVar,const string &line){return make_unique<E_ReadRightFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readUp",{[](const string &retVar,const string &line){return make_unique<E_ReadUpFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readDown",{[](const string &retVar,const string &line){return make_unique<E_ReadDownFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readLeftWrap",{[](const string &retVar, const string &line){return make_unique<E_ReadLeftWrapFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readRightWrap",{[](const string &retVar,const string &line){return make_unique<E_ReadRightWrapFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readUpWrap",{[](const string &retVar,const string &line){return make_unique<E_ReadUpWrapFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"readDownWrap",{[](const string &retVar,const string &line){return make_unique<E_ReadDownWrapFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getCursorX",{[](const string &retVar,const string &line){return make_unique<E_ReadCursorXFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getCursorY",{[](const string &retVar,const string &line){return make_unique<E_ReadCursorYFunction>(retVar,line);}}});
+        returnExpansionFunctions.insert({"getCursorPos",{[](const string &retVar,const string &line){return make_unique<E_GetCursorPosFunction>(retVar,line);}}});
+
+
+
     }
 
     vector<unique_ptr<HighLevelConstruct>> highLevelBlocks;
