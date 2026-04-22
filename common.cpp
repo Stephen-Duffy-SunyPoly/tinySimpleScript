@@ -84,6 +84,38 @@ std::string StackModificationAccountingFinishedInstruction::produce() {
     return result;
 }
 
+//mostly like the original but strips the brackets from any of its operands
+std::string DirectAddressFinishedInstruction::produce() {
+    std::string result;
+    if (label) {
+        result += "!" + operation;
+    } else {
+        result = "\t";
+        result += operation;
+        if (operands > 0) {
+            result +=" ";
+            if (op1.starts_with('[') && op1.ends_with(']')) {
+                result += op1.substr(1, op1.size()-2);
+            } else {
+                result += op1;
+            }
+            if (operands > 1) {
+                result += ", ";
+                if (op2.starts_with('[') && op2.ends_with(']')) {
+                    result += op2.substr(1, op2.size()-2);
+                } else {
+                    result += op2;
+                }
+            }
+        }
+    }
+    //add comment here
+    if (!comment.empty()) {
+        result += "\t; "+comment;
+    }
+    return result;
+}
+
 std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions, bool wrightOp,bool overwrite,int existingStackOffset) {
     if (overwrite && !wrightOp) {
         throw std::runtime_error("Resolver override flag set on a non wright op");
@@ -1053,7 +1085,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> DirectMemoryReadPartialInstruc
         op2Reg = loadFrom->asAsm();
         op2Comment = loadFrom->toString();
     }
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("lod",2,op1Reg,"["+op2Reg+"]",false,"read from memory address"+ op2Comment +" into "+op2Comment));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("lod",2,op1Reg,"["+op2Reg+"]",false,"read from memory address "+ op2Comment +" into "+op1comment));
     return finishedInstructions;
 }
 
@@ -1074,5 +1106,22 @@ std::vector<std::unique_ptr<FinishedInstruction>> DirectMemoryWritePartialInstru
     }
     //I know the op numbers are backwards here. I do not care!
     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,op2Reg,op1Reg,false,"write to memory address"+op2Comment + " the value in "+op1comment));
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> AddressReadPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    std::string op1Reg = resolver.resolve(returnTo,finishedInstructions,true,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(returnTo.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2 = readFrom->asAsm();
+    std::string op2Comment;
+    if (readFrom->isVariable()) {//if it is a variable the resolve it
+        auto* vdt = dynamic_cast<VariableDataType*>(readFrom.get());
+        op2Comment = vdt->getVarName();
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Comment = readFrom->toString();
+    }
+    finishedInstructions.emplace_back(std::make_unique<DirectAddressFinishedInstruction>("set", 2,op1Reg,op2,false,"read the address of "+op2Comment +" into "+op1comment));
     return finishedInstructions;
 }

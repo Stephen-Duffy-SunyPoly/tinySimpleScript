@@ -22,9 +22,11 @@ If you are looking for a real programing language / compiler to use with this ar
 | resetCycleCount()          | reset the cycle count                          |
 | resetWallTime()            | reset the wall time                            |
 | writeMemory(addr, value)   | write value direttly to memoery address addr   |
-| val = readMemory(add)      | directly read the value at memory address addr |
+| val = readMemory(addr)     | directly read the value at memory address addr |
+| val = getAddress(var)      | get the address of a variable                  |
 | trap()                     | stop executing the program at this function    |
 
+**IMPORTANT!** Reading and writing to the addresses of a variable will not necessarily produce the expected results
 
 #### LCD System 
 

@@ -176,6 +176,14 @@ struct StackModificationAccountingFinishedInstruction: public FinishedInstructio
     std::string produce() override;
 };
 
+struct DirectAddressFinishedInstruction: public FinishedInstruction {
+    DirectAddressFinishedInstruction(const std::string &operation,int operands,const std::string &op1,const std::string &op2): FinishedInstruction(operation, operands, op1, op2) {}
+    DirectAddressFinishedInstruction(const std::string &operation,int operands,const std::string &op1,const std::string &op2, std::string comment): FinishedInstruction(operation, operands, op1, op2, comment) {}
+    DirectAddressFinishedInstruction(const std::string &operation,int operands,const std::string &op1,const std::string &op2, bool label): FinishedInstruction(operation, operands, op1, op2, label) {}
+    DirectAddressFinishedInstruction(const std::string &operation,int operands,const std::string &op1,const std::string &op2, bool label, std::string comment): FinishedInstruction(operation, operands, op1, op2, label, comment) {}
+    std::string produce() override;
+};
+
 class RegisterResolver {
     std::vector<Register> &registers;
     std::vector<std::string> &localVars;
@@ -698,6 +706,26 @@ public:
             return value;
         }
         return writeTo;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class AddressReadPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> readFrom;
+    std::unique_ptr<DataType> returnTo;
+public:
+    AddressReadPartialInstruction(std::unique_ptr<DataType> returnTo, std::unique_ptr<DataType> readFrom): returnTo(std::move(returnTo)), readFrom(std::move(readFrom)) {}
+    std::string toString() override {
+        return "read address of " + readFrom->toString()+" into "+returnTo->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn == 0 ) {
+            return readFrom;
+        }
+        return returnTo;
     }
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };

@@ -311,3 +311,12 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class GetVarAddressFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> variable;
+    std::unique_ptr<DataType> returnValue;
+public:
+    GetVarAddressFunction(const std::string& retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

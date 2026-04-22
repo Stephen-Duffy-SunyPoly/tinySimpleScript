@@ -499,6 +499,7 @@ int main(const int argc, char* argv[]) {
     returnExpansionFunctions.insert({"getCycleCount",{[](const string &retVar, const string &line) {return make_unique<GetCycleCountFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"getWallTime",{[](const string &retVar, const string &line) {return make_unique<GetWallTimeFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"readMemory",{[](const string &retVar, const string &line) {return make_unique<ReadMemoryAddressFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"getAddress",{[](const string &retVar, const string &line) {return make_unique<GetVarAddressFunction>(retVar,line);}}});
 
     //load the langue constructs:
     if (LCDSystem) {

@@ -992,3 +992,31 @@ std::string ReadMemoryAddressFunction::toString() {
     return "Read Memory Address";
 }
 
+GetVarAddressFunction::GetVarAddressFunction(const std::string &retVar, const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read memory. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function read memory. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function read memory. Missing param 1");
+    }
+    variable = parseDataType(param1);
+    returnValue = parseDataType(retVar);
+    if (!returnValue->isVariable()) {
+        throw std::runtime_error("Syntax error: functions can only return values to variables");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> GetVarAddressFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<AddressReadPartialInstruction>(std::move(returnValue),std::move(variable)));
+    return instructions;
+}
+
+std::string GetVarAddressFunction::toString() {
+    return "get variable address";
+}
+

@@ -1,0 +1,16 @@
+//this file is to test direct memory access
+
+gvar useful
+gvar anotherValue = 67
+
+useful = getAddress(anotherValue)
+print(useful)
+
+do {
+    lvar count
+    useful = readMemory(count)
+    print(useful)
+    count ++
+} while (count < 45)
+
+trap()
