@@ -1,0 +1,214 @@
+//this file is for the edison system
+//simulate a phone dialer
+
+gvar dtmfCol1 = 1209
+gvar dtmfCol2 = 1336
+gvar dtmfCol3 = 1477
+gvar dtmfCol4 = 1633
+
+gvar dtmfRow1 = 697
+gvar dtmfRow2 = 770
+gvar dtmfRow3 = 852
+gvar dtmfRow4 = 941
+
+setPortADirection(65535)//set port a to be all inputs
+
+print("0000000000")
+setCursorPos(1)
+print(8351)//up arrow
+setCursorPos(3841)
+print("enter a number with the  D-pad then press A")
+setCursorPos(0)
+
+//the input loop
+do {
+    lvar paRaw //port a raw
+    paRaw = readPortA()
+    lvar work = paRaw
+    work &= 4
+    if( work != 0 ){//if right is pressed
+        //perhaps should check if this goes off the number
+        lvar tRight
+        tRight = readRight()
+        if(tRight != 0) {//if we are not at the end, move the cursor 1 to the right
+            moveCursorDown(1)
+            print(0)//update the display underneath
+            print(8351)
+            moveCursorLeft(1)
+            moveCursorUp(1)
+        }
+        delay(32767)
+        delay(32767)
+        delay(32767)
+        delay(32767)
+    }
+    work = paRaw
+    work &= 1
+    if(work != 0 ){ // if left is pressed
+        moveCursorDown(1)
+        print(0)//update the display underneath
+        moveCursorLeft(2)
+        print(8351)
+        moveCursorLeft(1)
+        moveCursorUp(1)
+        delay(32767)
+        delay(32767)
+        delay(32767)
+        delay(32767)
+    }
+    work = paRaw
+    work &= 2
+    if(work != 0){ //if up is pressed
+        lvar char
+        char = readCursor()
+        char ++
+        print(char)
+        moveCursorLeft(1)
+        if(char > 57){//if we went grater then 9
+            print("0")
+            moveCursorLeft(1)
+        }
+        delay(32767)
+        delay(32767)
+        delay(32767)
+        delay(32767)
+    }
+
+    work = paRaw
+    work &= 8
+    if(work != 0){ //if down is pressed
+        lvar char
+        char = readCursor()
+        char --
+        print(char)
+        moveCursorLeft(1)
+        if(char < 48){//if we went less then 0
+            print("9")
+            moveCursorLeft(1)
+        }
+        delay(32767)
+        delay(32767)
+        delay(32767)
+        delay(32767)
+    }
+
+
+    lvar ares = paRaw //check if the a button is pressed
+    ares &= 2048 // bit 11
+} while (ares == 0)
+//move the arrow back to the start of the line
+moveCursorDown(1)
+print(0)
+setCursorPos(0)
+moveCursorDown(1)
+print(8351)//up arrow
+setCursorPos(0)
+
+//play the number
+do {
+    playDtmfTone()
+    lvar next
+    next = readRight()
+    moveCursorDown(1) //move the arrow / cursor
+    print(0)//update the display underneath
+    print(8351)
+    moveCursorLeft(1)
+    moveCursorUp(1)
+} while (next != 0)
+moveCursorDown(1) //move the arrow / cursor
+print(0)//update the display underneath
+setCursorPos(1)
+print("Ringing...")
+
+//"ring" the phone
+playToneTimeLeftRight(440, 480, 32)
+sleep(64)
+playToneTimeLeftRight(440, 480, 32)
+sleep(64)
+playToneTimeLeftRight(440, 480, 32)
+sleep(64)
+playToneTimeLeftRight(440, 480, 32)
+sleep(64)
+//line busy
+setCursorPos(1)
+print("Line Busy")
+print(0)//clear the last dot from the previous message
+do { //line busy forever
+    playToneTimeLeftRight(620, 480, 8)
+    sleep(8)
+} while (0 == 0)
+
+trap() //if for some reason it gets here dont let it start executing the functions
+
+gvar toneTimeMax // used for passing time vals through scopes
+// play a tone of the left buzzer for an amount of time
+function playToneTimeLeft(tone, time){
+    toneTimeMax = time
+    setBuzzerLeft(tone)
+    resetWallTime()
+    do {
+        lvar wt
+        wt = getWallTime()
+    }while(wt < toneTimeMax)
+    setBuzzerLeft(0)
+}
+//play tones on the buzzers for a period of time
+function playToneTimeLeftRight(toneLeft,toneRight, time){
+    toneTimeMax = time
+    setBuzzerLeft(toneLeft)
+    setBuzzerRight(toneRight)
+    resetWallTime()
+    do {
+        lvar wt
+        wt = getWallTime()
+
+    }while(wt < toneTimeMax)
+    setBuzzerLeft(0)
+    setBuzzerRight(0)
+}
+//its a sleep funcion
+function sleep(time) {
+    resetWallTime()
+    toneTimeMax = time
+    do {
+        lvar wt
+        wt = getWallTime()
+    } while (wt < toneTimeMax)
+}
+
+function playDtmfTone(){ //play the DTMF tone of the number at the cursor
+    lvar char
+    char = readCursor()
+    char -= 48 // 0 base the number
+    //play the tones associated with that number
+    if(char == 0){
+        playToneTimeLeftRight(dtmfCol2, dtmfRow4, 3)
+    }
+    if(char == 1){
+        playToneTimeLeftRight(dtmfCol1, dtmfRow1, 3)
+    }
+    if(char == 2){
+        playToneTimeLeftRight(dtmfCol2, dtmfRow1, 3)
+    }
+    if(char == 3){
+        playToneTimeLeftRight(dtmfCol3, dtmfRow1, 3)
+    }
+    if(char == 4){
+        playToneTimeLeftRight(dtmfCol1, dtmfRow2, 3)
+    }
+    if(char == 5){
+        playToneTimeLeftRight(dtmfCol2, dtmfRow2, 3)
+    }
+    if(char == 6){
+        playToneTimeLeftRight(dtmfCol3, dtmfRow2, 3)
+    }
+    if(char == 7){
+        playToneTimeLeftRight(dtmfCol1, dtmfRow3, 3)
+    }
+    if(char == 8){
+        playToneTimeLeftRight(dtmfCol2, dtmfRow3, 3)
+    }
+    if(char == 9){
+        playToneTimeLeftRight(dtmfCol3, dtmfRow3, 3)
+    }
+}
