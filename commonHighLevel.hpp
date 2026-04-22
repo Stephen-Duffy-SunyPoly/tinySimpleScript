@@ -293,3 +293,21 @@ public:
     std::vector<std::unique_ptr<PartialInstruction>> expand() override;
     std::string toString() override;
 };
+
+class WriteMemoryAddressFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> address;
+    std::unique_ptr<DataType> value;
+public:
+    WriteMemoryAddressFunction(const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};
+
+class ReadMemoryAddressFunction: public HighLevelConstruct {
+    std::unique_ptr<DataType> address;
+    std::unique_ptr<DataType> returnValue;
+public:
+    ReadMemoryAddressFunction(const std::string& retVar, const std::string& line);
+    std::vector<std::unique_ptr<PartialInstruction>> expand() override;
+    std::string toString() override;
+};

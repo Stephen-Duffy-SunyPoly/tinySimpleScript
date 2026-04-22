@@ -1034,3 +1034,45 @@ std::vector<std::unique_ptr<FinishedInstruction>> PrintStringPartialInstruction:
     }
     return finishedInstructions;
 }
+
+std::vector<std::unique_ptr<FinishedInstruction>> DirectMemoryReadPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    if (!returnTo->isVariable()) {
+        throw std::runtime_error("Direct memory read operation must store the rsult in a varable variable");
+    }
+    std::string op1Reg = resolver.resolve(returnTo,finishedInstructions,true,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(returnTo.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
+    if (loadFrom->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(loadFrom,finishedInstructions,false,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(loadFrom.get());
+        op2Comment = vdt->getVarName();
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = loadFrom->asAsm();
+        op2Comment = loadFrom->toString();
+    }
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("lod",2,op1Reg,"["+op2Reg+"]",false,"read from memory address"+ op2Comment +" into "+op2Comment));
+    return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> DirectMemoryWritePartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> finishedInstructions;
+    std::string op1Reg = resolver.resolve(value,finishedInstructions,true,true);
+    auto * o1v = dynamic_cast<VariableDataType*>(value.get());
+    std::string op1comment = o1v->getVarName();
+    std::string op2Reg;
+    std::string op2Comment;
+    if (writeTo->isVariable()) {//if it is a variable the resolve it
+        op2Reg = resolver.resolve(writeTo,finishedInstructions,false,false);
+        auto* vdt = dynamic_cast<VariableDataType*>(writeTo.get());
+        op2Comment = vdt->getVarName();
+    } else {//if it is not a variable it does not need to be resolved for this
+        op2Reg = writeTo->asAsm();
+        op2Comment = writeTo->toString();
+    }
+    //I know the op numbers are backwards here. I do not care!
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,op2Reg,op1Reg,false,"write to memory address"+op2Comment + " the value in "+op1comment));
+    return finishedInstructions;
+}

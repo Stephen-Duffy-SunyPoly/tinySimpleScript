@@ -662,6 +662,46 @@ public:
     std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
 };
 
+class DirectMemoryReadPartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> loadFrom;
+    std::unique_ptr<DataType> returnTo;
+public:
+    DirectMemoryReadPartialInstruction(std::unique_ptr<DataType> loadFrom, std::unique_ptr<DataType> returnTo): loadFrom(std::move(loadFrom)), returnTo(std::move(returnTo)) {}
+    std::string toString() override {
+        return "read memory into " + returnTo->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn == 0 ) {
+            return loadFrom;
+        }
+        return returnTo;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
+class DirectMemoryWritePartialInstruction : public PartialInstruction {
+    std::unique_ptr<DataType> writeTo;
+    std::unique_ptr<DataType> value;
+public:
+    DirectMemoryWritePartialInstruction(std::unique_ptr<DataType> writeTo, std::unique_ptr<DataType> value): writeTo(std::move(writeTo)), value(std::move(value)) {}
+    std::string toString() override {
+        return "write to memory " + value->toString();
+    }
+    int numVars() override {
+        return 2;
+    }
+    std::unique_ptr<DataType>& getVariable(int vn) override {
+        if (vn == 0 ) {
+            return value;
+        }
+        return writeTo;
+    }
+    std::vector<std::unique_ptr<FinishedInstruction>> assemble(RegisterResolver &resolver) override;
+};
+
 class HighLevelConstruct {
 public:
     virtual ~HighLevelConstruct() = default;

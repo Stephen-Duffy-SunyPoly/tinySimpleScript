@@ -490,6 +490,7 @@ int main(const int argc, char* argv[]) {
     expansionFunctions.insert({"setPortBDirection",{[](const string &line) {return make_unique<SetPortBDirectionFunction>(line);}}});
     expansionFunctions.insert({"resetCycleCount",{[](const string &line) {return make_unique<ResetCycleCountFunction>(line);}}});
     expansionFunctions.insert({"resetWallTime",{[](const string &line) {return make_unique<ResetWallTimeFunction>(line);}}});
+    expansionFunctions.insert({"writeMemory",{[](const string &line) {return make_unique<WriteMemoryAddressFunction>(line);}}});
 
     returnExpansionFunctions.insert({"random",{[](const string &retVar, const string &line) {return make_unique<RandFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"randomBits",{[](const string &retVar, const string &line) {return make_unique<RandBitsFunction>(retVar,line);}}});
@@ -497,6 +498,7 @@ int main(const int argc, char* argv[]) {
     returnExpansionFunctions.insert({"readPortB",{[](const string &retVar, const string &line) {return make_unique<ReadPortBFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"getCycleCount",{[](const string &retVar, const string &line) {return make_unique<GetCycleCountFunction>(retVar,line);}}});
     returnExpansionFunctions.insert({"getWallTime",{[](const string &retVar, const string &line) {return make_unique<GetWallTimeFunction>(retVar,line);}}});
+    returnExpansionFunctions.insert({"readMemory",{[](const string &retVar, const string &line) {return make_unique<ReadMemoryAddressFunction>(retVar,line);}}});
 
     //load the langue constructs:
     if (LCDSystem) {

@@ -925,3 +925,70 @@ std::string GetWallTimeFunction::toString() {
     return "Get wall time";
 }
 
+WriteMemoryAddressFunction::WriteMemoryAddressFunction(const std::string &line) {
+    //get each parameter as a string
+    size_t nextComa = line.find(',');
+    if (nextComa == std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function type point. Not enough parameters!");
+    }
+    std::string param1 = line.substr(0, nextComa);
+    std::string continueStr = line.substr(nextComa+1);
+    nextComa = continueStr.find(',');
+    if (nextComa != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function type write memory. Too many parameters!");
+    }
+    std::string param2 = continueStr;
+
+    //trim each parameter
+    param1 = trim(param1);
+    param2 = trim(param2);
+    //make sure there is actually somthing in all of them
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function type write memory. Missing param 1");
+    }
+    if (param2.empty()) {
+        throw std::runtime_error("Invalid parameters for function type write memory. Missing param 2");
+    }
+    //parse them, figure out what they are
+    address = parseDataType(param1);
+    value = parseDataType(param2);
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> WriteMemoryAddressFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectMemoryWritePartialInstruction>(std::move(address),std::move(value)));
+    return instructions;
+}
+
+std::string WriteMemoryAddressFunction::toString() {
+    return "Write Memory Address";
+}
+
+ReadMemoryAddressFunction::ReadMemoryAddressFunction(const std::string &retVar, const std::string &line) {
+    if (line.empty()) {
+        throw std::runtime_error("Invalid parameters for function type read memory. Empty parameter!");
+    }
+    if (line.find(',') != std::string::npos) {
+        throw std::runtime_error("Invalid parameters for function read memory. Too many parameters!");
+    }
+    std::string param1 = trim(line);
+    if (param1.empty()) {
+        throw std::runtime_error("Invalid parameters for function read memory. Missing param 1");
+    }
+    address = parseDataType(param1);
+    returnValue = parseDataType(retVar);
+    if (!returnValue->isVariable()) {
+        throw std::runtime_error("Syntax error: functions can only return values to variables");
+    }
+}
+
+std::vector<std::unique_ptr<PartialInstruction>> ReadMemoryAddressFunction::expand() {
+    std::vector<std::unique_ptr<PartialInstruction>> instructions;
+    instructions.emplace_back(std::make_unique<DirectMemoryReadPartialInstruction>(std::move(address),std::move(returnValue)));
+    return instructions;
+}
+
+std::string ReadMemoryAddressFunction::toString() {
+    return "Read Memory Address";
+}
+
