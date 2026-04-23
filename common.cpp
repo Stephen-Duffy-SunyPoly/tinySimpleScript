@@ -193,7 +193,7 @@ std::string RegisterResolver::resolve(std::unique_ptr<DataType> &data, std::vect
             }
             if (stack) {
                 if (existingStackOffset != 0) {
-                    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("str",2,"[sp"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,existingStackOffset,"save "+registers[lruIndex].varName+" to memory"));
+                    finishedInstructions.emplace_back(std::make_unique<StackModificationAccountingFinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,existingStackOffset,"save "+registers[lruIndex].varName+" to memory"));
                 } else {
                     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"[sp+"+std::to_string(registers[lruIndex].imValue)+"]",outputRegister,"save "+registers[lruIndex].varName+" to memory"));
                 }
