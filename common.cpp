@@ -1107,7 +1107,7 @@ std::vector<std::unique_ptr<FinishedInstruction>> DirectMemoryWritePartialInstru
         op2Comment = writeTo->toString();
     }
     //I know the op numbers are backwards here. I do not care!
-    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,op2Reg,op1Reg,false,"write to memory address"+op2Comment + " the value in "+op1comment));
+    finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+op2Reg+"]",op1Reg,false,"write to memory address"+op2Comment + " the value in "+op1comment));
     return finishedInstructions;
 }
 
