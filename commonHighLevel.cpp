@@ -609,6 +609,7 @@ std::vector<std::unique_ptr<PartialInstruction>> IfHighLevelOperation::expand() 
     }
     //end label
     instructions.emplace_back(std::make_unique<LabelPartialInstruction>(endLabel));
+    instructions.emplace_back(std::make_unique<FlushGlobalVarsPartialInstruction>());
 
     return instructions;
 }

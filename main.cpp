@@ -106,12 +106,6 @@ vector<UserFunctionData> functions;
 
 vector<Register> registers;
 
-std::vector<std::unique_ptr<FinishedInstruction>> FlushGlobalVarsPartialInstruction::assemble(RegisterResolver &resolver) {
-    std::vector<std::unique_ptr<FinishedInstruction>> instructions;
-    resolver.flushGlobalVars(instructions);
-    return instructions;
-}
-
 unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file, int &lineNumber, vector<string> &localVars, bool returnAllowed) {
     size_t commentStart = line.find("//");
     if (commentStart == string::npos) {

@@ -282,32 +282,33 @@ void RegisterResolver::restoreRegisters(std::vector<std::unique_ptr<FinishedInst
 void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstruction>> &finishedInstructions) const {
     for (size_t i = 0; i < registers.size(); i++) {
         if (!registers[i].varName.empty()){
+            bool stack = false;
+            for (auto& var : localVars) {
+                if (var== registers[i].varName) {
+                    stack = true;
+                    break;
+                }
+            }
+            for (auto& var : paramVars) {
+                if (var== registers[i].varName) {
+                    stack = true;
+                    break;
+                }
+            }
             if (registers[i].dirty) {
-                bool stack = false;
-                for (auto& var : localVars) {
-                    if (var== registers[i].varName) {
-                        stack = true;
-                        break;
-                    }
-                }
-                for (auto& var : paramVars) {
-                    if (var== registers[i].varName) {
-                        stack = true;
-                        break;
-                    }
-                }
                 if (!stack) {
+                    //save the content of this register
                     std::string outputRegister = "rA";
                     outputRegister[1] += static_cast<char>(i); // NOLINT(*-narrowing-conversions)
                     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister,"flush "+registers[i].varName+" to memory"));
-                    //clear this reg
-                    //make this as an empty reg
-                    registers[i].varName = "";
-                    registers[i].lru = 10000000;
-                    registers[i].imValue =0;
-                    registers[i].dirty = false;
                 }
             }
+            //clear this reg
+            //make this as an empty reg
+            registers[i].varName = "";
+            registers[i].lru = 10000000;
+            registers[i].imValue =0;
+            registers[i].dirty = false;
 
         }
     }
@@ -1124,4 +1125,10 @@ std::vector<std::unique_ptr<FinishedInstruction>> AddressReadPartialInstruction:
     }
     finishedInstructions.emplace_back(std::make_unique<DirectAddressFinishedInstruction>("set", 2,op1Reg,op2,false,"read the address of "+op2Comment +" into "+op1comment));
     return finishedInstructions;
+}
+
+std::vector<std::unique_ptr<FinishedInstruction>> FlushGlobalVarsPartialInstruction::assemble(RegisterResolver &resolver) {
+    std::vector<std::unique_ptr<FinishedInstruction>> instructions;
+    resolver.flushGlobalVars(instructions);
+    return instructions;
 }
