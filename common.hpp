@@ -50,10 +50,13 @@ inline std::string trim(const std::string& str) {
 }
 
 inline bool charIsNumber(char c) {
-    return c >= '0' && c <= '9';
+    return c >= '0' && c <= '9' || c == '-';
 }
 
 inline bool stringIsNumber(const std::string &str) {
+    if (str[0] == '-') {//negative numbers are allowed
+        return str.substr(1).find_first_not_of("0123456789") == std::string::npos;
+    }
     return str.find_first_not_of("0123456789") == std::string::npos;
 }
 

@@ -303,13 +303,14 @@ void RegisterResolver::flushGlobalVars(std::vector<std::unique_ptr<FinishedInstr
                     finishedInstructions.emplace_back(std::make_unique<FinishedInstruction>("str",2,"["+registers[i].varName+"]",outputRegister,"flush "+registers[i].varName+" to memory"));
                 }
             }
-            //clear this reg
-            //make this as an empty reg
-            registers[i].varName = "";
-            registers[i].lru = 10000000;
-            registers[i].imValue =0;
-            registers[i].dirty = false;
-
+            if (!stack) {
+                //clear this reg
+                //make this as an empty reg
+                registers[i].varName = "";
+                registers[i].lru = 10000000;
+                registers[i].imValue =0;
+                registers[i].dirty = false;
+            }
         }
     }
 }
