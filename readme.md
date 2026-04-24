@@ -194,6 +194,7 @@ tinySimplescript ./program.tass
 `--edison` Build a program for the edison system. Compiles with functions specific to the edison system and not the LCD system.  
 `--nosys` Builds a program for a generic Teeny AT system with no system specific functions available.
 
+To only allow your program to be built for a specific system add `@require <stsyem>` at the top of your program. options for system are `LCD` and `edison`
 
 ## Example programs
 

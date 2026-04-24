@@ -1,5 +1,6 @@
 //this file is for the edison system
 //simulate a phone dialer
+@require edison
 
 gvar dtmfCol1 = 1209
 gvar dtmfCol2 = 1336

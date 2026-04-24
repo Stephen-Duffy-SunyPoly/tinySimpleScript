@@ -391,6 +391,20 @@ unique_ptr<HighLevelConstruct> parseFileLine(const string& line, ifstream& file,
             return make_unique<DecrementHighLevelOperation>(tokens[0]);
         } else if (tokens[1] == "~=") {
             return make_unique<NegateHighLevelOperation>(tokens[0]);
+        } if (tokens[0] == "@require") {
+            if (tokens[1] == "LCD") {
+                if (!LCDSystem) {
+                    throw std::runtime_error("This program requires the LCD system");
+                }
+                return nullptr;
+            }
+            if (tokens[1] == "edison") {
+                if (!edisonSystem) {
+                    throw std::runtime_error("This program requires the edison system");
+                }
+                return nullptr;
+            }
+            throw std::runtime_error("Unknown requirement "+tokens[1]+" options are: LCD edison");
         }
 
         if (tokens.size() < 3) {
@@ -467,7 +481,10 @@ int main(const int argc, char* argv[]) {
         if (args[i] == "--nosys") {
             LCDSystem = false;
             edisonSystem = false;
+            continue;
         }
+        cerr << "Unknown option: " << args[i] << endl;
+        return EXIT_FAILURE;
     }
 
     ifstream fileIn(args[0]);

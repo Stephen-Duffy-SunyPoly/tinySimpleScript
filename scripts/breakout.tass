@@ -1,4 +1,5 @@
 //a version of breakout for the LCD system
+@require LCD
 
 gvar ballX = 32
 gvar ballY = 50
