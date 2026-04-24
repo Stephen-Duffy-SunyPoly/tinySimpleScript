@@ -1,0 +1,246 @@
+//a version of breakout for the LCD system
+
+gvar ballX = 32
+gvar ballY = 50
+gvar ballVelocityX = 0
+gvar ballVelocityY = 2
+gvar paddleX = 20
+gvar posDif
+gvar delayFrame = 0
+gvar boxes1 = 31
+gvar boxes2 = 31
+gvar boxes3 = 31
+gvar boxes4 = 31
+gvar boxes5 = 31
+gvar tmpNum1
+gvar tmpNum2
+gvar tmpNum3
+gvar lives = 5
+
+//the main loop
+do {
+	lvar paddleLeft
+	lvar paddleRight
+	
+	fill(0)
+	setStroke(0)
+	clear()
+	if(delayFrame == 0){
+		updateBallPosition()
+	}
+	delayFrame ++
+	delayFrame %= 3
+	
+	//draw the paddle
+	fill(1026)
+	paddleX = getMouseX()
+	//constrain it
+	if(paddleX < 7){
+		paddleX = 7
+	}
+	if(paddleX > 56){//globas are flushed, then paddleX is loaded for this and not removed from cache after the statment maning incorrect cache value exsisits
+		paddleX = 56
+	}
+	//why is it not reloading paddle X here?
+	paddleLeft = paddleX
+	paddleRight = paddleX
+	paddleLeft -= 7
+	paddleRight += 7
+	rect(paddleLeft, 59 , paddleRight, 60)
+	//check paddle bounce
+	//verticle check
+	if(ballY >= 59) {
+		if(ballY <= 60) {
+			//horozontal check
+			lvar paddleLeft = paddleX
+			paddleLeft -= 7
+			if(ballX >= paddleLeft){
+				lvar paddleRight = paddleX
+				paddleRight += 7
+				//print(paddleRight)
+				//print(ballX)
+				//print(0)
+				if(ballX <= paddleRight){
+					paddleBounce()
+				}
+				//god this is aweful
+			}
+		}
+	}
+	
+	fill(3548)
+	//draw the boxes
+	drawBoxRow(boxes1, 0)
+	fill(2118)
+	drawBoxRow(boxes2, 1)
+	fill(1594)
+	drawBoxRow(boxes3, 2)
+	fill(500)
+	drawBoxRow(boxes4, 3)
+	fill(3077)
+	drawBoxRow(boxes5, 4)
+	
+	//box collision
+	if(ballY < 25){
+		boxCollision()
+	}
+	
+	//draw the ball just before the upate
+	stroke(2564)
+	point(ballX, ballY)
+	
+	//draw lives
+	do {
+		lvar livesLeft
+		
+		lvar xpos = livesLeft
+		xpos << 1 //*2
+		point(xpos, 63)
+		
+		livesLeft ++
+	} while (livesLeft < lives)
+	
+	update()
+	
+	lvar win = boxes1
+	win |= boxes2
+	win |= boxes3
+	win |= boxes4
+	win |= boxes5
+	
+} while (win != 0)
+
+fill(1620)
+clear()
+update()
+
+trap() // once you win halt execution here
+
+
+function updateBallPosition(){
+	ballX += ballVelocityX
+	ballY += ballVelocityY
+	//if they went out of bounds, set them back to in bounds, and then negate that axisis veloity 
+	if(ballX < 0){
+		ballX = 0
+		ballVelocityX ~=
+	}
+	if(ballY < 0){
+		ballY = 0
+		ballVelocityY ~=
+	}
+	if(ballX > 63){
+		ballX = 63
+		ballVelocityX ~=
+	}
+	if(ballY > 63){ // bottom of the screen
+		ballY = 63
+		ballVelocityY ~=
+		lives --
+		if(lives == 0){ // if out of lives, reset
+			lives = 5
+			ballX = 32
+			ballY = 50
+			ballVelocityX = 0
+			ballVelocityY = 2
+			boxes1 = 31
+			boxes2 = 31
+			boxes3 = 31
+			boxes4 = 31
+			boxes5 = 31
+		}
+	}
+}
+
+function paddleBounce(){
+	lvar trueDif
+	trueDif = ballX
+	trueDif -= paddleX
+	posDif = trueDif
+	if(trueDif < 0){
+		posDif ~=
+	}
+	ballVelocityX = posDif
+	ballVelocityX << 1 //multiply by 2
+	ballVelocityX /= 5
+	if(trueDif < 0){
+		ballVelocityX ~=
+	}
+	if(posDif > 2){
+		ballVelocityY = -1
+	} else {
+		ballVelocityY = -2
+	}
+}
+
+function drawBoxRow(state, rowNum){
+	//genarte the mask for this one
+	tmpNum1 = state
+	tmpNum2 = rowNum
+	do {
+		lvar boxNum
+		lvar boxMask = 1
+		boxMask << boxNum
+		boxMask &= tmpNum1 // state
+		tmpNum3 = boxNum
+		if(boxMask > 0){
+			//draw time!
+			lvar left = 3
+			lvar right = 13
+			lvar top = 3
+			lvar bottom = 5
+			lvar calc = 12
+			calc *= tmpNum3 //box number
+			left += calc
+			right += calc
+			calc = 5
+			calc *= tmpNum2 //row num
+			top += calc
+			bottom += calc
+			
+			rect(left, top, right, bottom)
+		}
+		
+		boxNum ++
+	} while (boxNum < 5)
+}
+
+//lots of smarts going on in this funcion
+function boxCollision(){
+	//setp 1 find the row the box is in
+	lvar row = ballY
+	row -= 3
+	row /= 5
+	//step 2 get the state of that row, all the states are next to eachother so it is effecivly an array
+	lvar boxAddr
+	boxAddr = getAddress(boxes1)
+	lvar rowState 
+	boxAddr += row
+	rowState = readMemory(boxAddr)//get the state of this row
+	//step 3 get the col the box is in
+	lvar boxCol = ballX
+	boxCol -= 2
+	tmpNum1 = boxCol // the in box position
+	boxCol /= 12
+	tmpNum1 %= 12
+	lvar boxMask = 1
+	//step 4 create the bit mask to check the box the ball is in
+	boxMask << boxCol 
+	boxMask &= rowState // and 
+	tmpNum2 = 0
+	if(boxMask > 0){ //if it hit a box
+		ballVelocityY ~= //invert the y velocity
+		tmpNum2 = 1
+		//horozontal bounce
+		if( tmpNum1 < 2){
+			ballVelocityX ~=
+		}
+		if( tmpNum1 > 9){
+			ballVelocityX ~=
+		}
+	}
+	//flip this block if it collided
+	tmpNum2 << boxCol
+	rowState ^= tmpNum2
+	writeMemory(boxAddr, rowState)
+}
